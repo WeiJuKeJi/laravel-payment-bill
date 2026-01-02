@@ -40,34 +40,22 @@ php artisan migrate
 
 ## 配置
 
-### 环境变量
+### 配置文件
 
-在 `.env` 文件中添加以下配置：
+发布配置文件后，你可以在 `config/payment-bill.php` 中修改所有配置项：
 
-```env
-# 账单文件存储磁盘
-PAYMENT_BILL_STORAGE_DISK=local
-
-# HTTP 客户端配置
-PAYMENT_BILL_HTTP_TIMEOUT=60
-PAYMENT_BILL_HTTP_CONNECT_TIMEOUT=10
-
-# 日志配置
-PAYMENT_BILL_LOGGER_ENABLE=true
-PAYMENT_BILL_LOGGER_LEVEL=info
-PAYMENT_BILL_LOGGER_TYPE=daily
-PAYMENT_BILL_LOGGER_MAX_FILE=14
-
-# 队列配置
-PAYMENT_BILL_QUEUE_CONNECTION=database
-PAYMENT_BILL_WECHAT_IMPORT_QUEUE=payment-bill:wechat-import
-PAYMENT_BILL_ALIPAY_IMPORT_QUEUE=payment-bill:alipay-import
-
-# 路由配置
-PAYMENT_BILL_ROUTE_ENABLED=true
-PAYMENT_BILL_ROUTE_PREFIX=payment-bill
-PAYMENT_BILL_ROUTE_MIDDLEWARE=auth:sanctum
+```bash
+php artisan vendor:publish --tag=payment-bill-config
 ```
+
+**重要配置项：**
+
+- `storage_disk` - 账单文件存储磁盘（默认：local）
+- `http` - HTTP 客户端超时配置
+- `logger` - 日志记录配置
+- `queues` - 队列连接和队列名称配置
+- `route_prefix` - API 路由前缀（默认：api/payment-bill）
+- `guard` - 认证守卫（默认：sanctum）
 
 ### 支付渠道配置
 
@@ -207,32 +195,34 @@ php artisan payment-bill:import --force
 
 ## 高级用法
 
-### 自定义路由中间件
+### 自定义路由前缀
+
+在配置文件中修改路由前缀：
 
 ```php
 // config/payment-bill.php
-'route' => [
-    'middleware' => ['auth:sanctum', 'role:admin'],
-],
+'route_prefix' => 'api/custom-bill',
 ```
 
-### 禁用路由注册
+访问路径将变为：`/api/custom-bill/payment-channels`
+
+### 自定义认证守卫
+
+如果你使用其他认证方式，可以修改守卫配置：
 
 ```php
 // config/payment-bill.php
-'route' => [
-    'enabled' => false,
-],
+'guard' => 'api', // 或其他自定义守卫
 ```
-
-然后在应用中手动注册路由。
 
 ### 自定义队列配置
+
+修改队列连接和队列名称：
 
 ```php
 // config/payment-bill.php
 'queues' => [
-    'connection' => 'redis',
+    'connection' => 'redis', // 使用 redis 队列
     'wechat_bill_import' => 'high-priority',
     'alipay_bill_import' => 'high-priority',
 ],
