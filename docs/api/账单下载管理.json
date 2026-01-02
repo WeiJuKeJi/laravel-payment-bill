@@ -6,9 +6,9 @@
     "version": "1.0.0"
   },
   "paths": {
-    "/finances/bill-downloads": {
+    "/payment-bill/bill-downloads": {
       "get": {
-        "tags": ["Finance/BillDownload"],
+        "tags": ["PaymentBill/BillDownload"],
         "summary": "获取账单下载记录列表",
         "description": "获取账单下载任务列表,支持按日期、渠道、状态等条件筛选\n\n**测试用例:**\n1. 默认分页查询: 按账单日期倒序\n2. 按日期范围筛选: `bill_date_start=2025-11-01&bill_date_end=2025-11-30`\n3. 按支付渠道筛选: `payment_channel_id=1`\n4. 按下载状态筛选: `download_status=completed`\n5. 按导入状态筛选: `import_status=completed`\n6. 仅查看失败记录: `only_failed=true`\n7. 升序排列: `order=asc`",
         "operationId": "getBillDownloads",
@@ -139,7 +139,7 @@
         }
       },
       "post": {
-        "tags": ["Finance/BillDownload"],
+        "tags": ["PaymentBill/BillDownload"],
         "summary": "手动触发账单下载",
         "description": "手动发起账单下载任务,支持强制重新下载\n\n**测试用例:**\n1. 下载微信全量账单\n2. 下载支付宝全量账单\n3. 强制重新下载已存在的账单\n4. 下载微信退款账单\n5. 下载支付宝成功账单",
         "operationId": "createBillDownload",
@@ -244,9 +244,9 @@
         }
       }
     },
-    "/finances/bill-downloads/{billDownload}": {
+    "/payment-bill/bill-downloads/{billDownload}": {
       "get": {
-        "tags": ["Finance/BillDownload"],
+        "tags": ["PaymentBill/BillDownload"],
         "summary": "查看账单下载详情",
         "description": "获取指定账单下载任务的详细信息,包括下载和导入状态",
         "operationId": "getBillDownload",
@@ -317,9 +317,9 @@
         }
       }
     },
-    "/finances/bill-downloads/{billDownload}/download": {
+    "/payment-bill/bill-downloads/{billDownload}/download": {
       "get": {
-        "tags": ["Finance/BillDownload"],
+        "tags": ["PaymentBill/BillDownload"],
         "summary": "下载账单文件",
         "description": "下载已完成的账单文件\n\n**前置条件:**\n- 账单下载状态必须为 completed\n- 账单文件必须存在\n\n**返回:**\n- 成功: 返回文件流,浏览器自动下载\n- 失败: 返回 JSON 错误信息\n\n**文件命名规则:**\n格式: `{channel}_{billDate}_{billType}.{extension}`\n示例: `wechat_20251114_ALL.csv.gz`\n\n**测试用例:**\n1. 下载微信账单文件\n2. 下载支付宝账单文件\n3. 尝试下载未完成的账单(应返回 400 错误)\n4. 尝试下载不存在的文件(应返回 404 错误)",
         "operationId": "downloadBillFile",

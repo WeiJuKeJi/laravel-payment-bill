@@ -6,9 +6,9 @@
     "version": "1.0.0"
   },
   "paths": {
-    "/finances/alipay-bills": {
+    "/payment-bill/alipay-bills": {
       "get": {
-        "tags": ["Finance/AlipayBill"],
+        "tags": ["PaymentBill/AlipayBill"],
         "summary": "获取支付宝账单列表",
         "description": "获取支付宝账单流水列表,支持按日期、商户号、交易类型等条件筛选\n\n**测试用例:**\n1. 默认分页查询: 按账单日期和创建时间倒序\n2. 按日期范围筛选: `bill_date_start=2025-11-01&bill_date_end=2025-11-30`\n3. 按商户号筛选: `alipay_merchant_id=2088123456789012`\n4. 按业务类型筛选: `business_type=online_pay`\n5. 包含支付渠道信息: `with_channel=true`\n6. 升序排列: `order=asc`",
         "operationId": "getAlipayBills",
@@ -133,9 +133,9 @@
         }
       }
     },
-    "/finances/alipay-bills/{alipayBill}": {
+    "/payment-bill/alipay-bills/{alipayBill}": {
       "get": {
-        "tags": ["Finance/AlipayBill"],
+        "tags": ["PaymentBill/AlipayBill"],
         "summary": "查看支付宝账单详情",
         "description": "获取指定支付宝账单的详细信息",
         "operationId": "getAlipayBill",

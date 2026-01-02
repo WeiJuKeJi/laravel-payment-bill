@@ -6,9 +6,9 @@
     "version": "1.0.0"
   },
   "paths": {
-    "/finances/payment-channels": {
+    "/payment-bill/payment-channels": {
       "get": {
-        "tags": ["Finance/PaymentChannel"],
+        "tags": ["PaymentBill/PaymentChannel"],
         "summary": "获取支付渠道列表",
         "description": "获取支付渠道配置列表,支持按渠道类型、模式等条件筛选\n\n**测试用例:**\n1. 默认分页查询所有渠道\n2. 筛选微信支付渠道: `channel=wechat`\n3. 筛选服务商模式: `mode=service`\n4. 关键词搜索: `keywords=测试`\n5. 组合查询: `channel=alipay&mode=normal`",
         "operationId": "getPaymentChannels",
@@ -99,7 +99,7 @@
         }
       },
       "post": {
-        "tags": ["Finance/PaymentChannel"],
+        "tags": ["PaymentBill/PaymentChannel"],
         "summary": "创建支付渠道",
         "description": "创建新的支付渠道配置,支持微信支付和支付宝\n\n**测试用例:**\n1. 创建微信支付渠道(直连模式)\n2. 创建微信支付渠道(服务商模式)\n3. 创建支付宝渠道(证书模式)\n4. 创建支付宝渠道(公钥模式)",
         "operationId": "createPaymentChannel",
@@ -194,9 +194,9 @@
         }
       }
     },
-    "/finances/payment-channels/{payment_channel}": {
+    "/payment-bill/payment-channels/{payment_channel}": {
       "get": {
-        "tags": ["Finance/PaymentChannel"],
+        "tags": ["PaymentBill/PaymentChannel"],
         "summary": "查看支付渠道详情",
         "description": "获取指定支付渠道的详细配置信息",
         "operationId": "getPaymentChannel",
@@ -248,7 +248,7 @@
         }
       },
       "put": {
-        "tags": ["Finance/PaymentChannel"],
+        "tags": ["PaymentBill/PaymentChannel"],
         "summary": "更新支付渠道",
         "description": "更新支付渠道配置信息,支持上传新的证书文件\n\n**测试用例:**\n1. 更新渠道名称\n2. 更换证书文件\n3. 修改备注信息",
         "operationId": "updatePaymentChannel",
@@ -328,7 +328,7 @@
         }
       },
       "delete": {
-        "tags": ["Finance/PaymentChannel"],
+        "tags": ["PaymentBill/PaymentChannel"],
         "summary": "删除支付渠道",
         "description": "删除支付渠道配置及相关证书文件",
         "operationId": "deletePaymentChannel",

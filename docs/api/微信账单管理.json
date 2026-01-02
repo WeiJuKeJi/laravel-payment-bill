@@ -6,9 +6,9 @@
     "version": "1.0.0"
   },
   "paths": {
-    "/finances/wechat-bills": {
+    "/payment-bill/wechat-bills": {
       "get": {
-        "tags": ["Finance/WechatBill"],
+        "tags": ["PaymentBill/WechatBill"],
         "summary": "获取微信账单列表",
         "description": "获取微信支付账单流水列表,支持按日期、商户号、交易类型等条件筛选\n\n**测试用例:**\n1. 默认分页查询: 按交易时间倒序\n2. 按日期范围筛选: `trade_time_start=2025-11-01T00:00:00&trade_time_end=2025-11-30T23:59:59`\n3. 按商户号筛选: `mch_id=1234567890`\n4. 按交易类型筛选: `trade_type=NATIVE`\n5. 按交易状态筛选: `trade_state=SUCCESS`\n6. 包含支付渠道信息: `with_channel=true`\n7. 升序排列: `order=asc`",
         "operationId": "getWechatBills",
@@ -137,9 +137,9 @@
         }
       }
     },
-    "/finances/wechat-bills/{wechatBill}": {
+    "/payment-bill/wechat-bills/{wechatBill}": {
       "get": {
-        "tags": ["Finance/WechatBill"],
+        "tags": ["PaymentBill/WechatBill"],
         "summary": "查看微信账单详情",
         "description": "获取指定微信账单的详细信息",
         "operationId": "getWechatBill",
