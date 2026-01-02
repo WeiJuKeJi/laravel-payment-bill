@@ -4,7 +4,10 @@
       "Bash(tree:*)",
       "Bash(git init:*)",
       "Bash(git remote add origin git@github.com:WeiJuKeJi/laravel-payment-bill.git)",
-      "Bash(git add .)"
+      "Bash(git add .)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(git add:*)"
     ]
   }
 }
