@@ -1,0 +1,463 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "账单下载管理 API",
+    "description": "管理微信和支付宝账单下载任务,支持手动触发下载和查看下载状态",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/finances/bill-downloads": {
+      "get": {
+        "tags": ["Finance/BillDownload"],
+        "summary": "获取账单下载记录列表",
+        "description": "获取账单下载任务列表,支持按日期、渠道、状态等条件筛选\n\n**测试用例:**\n1. 默认分页查询: 按账单日期倒序\n2. 按日期范围筛选: `bill_date_start=2025-11-01&bill_date_end=2025-11-30`\n3. 按支付渠道筛选: `payment_channel_id=1`\n4. 按下载状态筛选: `download_status=completed`\n5. 按导入状态筛选: `import_status=completed`\n6. 仅查看失败记录: `only_failed=true`\n7. 升序排列: `order=asc`",
+        "operationId": "getBillDownloads",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "Accept",
+            "in": "header",
+            "required": true,
+            "schema": { "type": "string" },
+            "example": "application/json"
+          },
+          {
+            "name": "payment_channel_id",
+            "in": "query",
+            "description": "支付渠道ID",
+            "schema": { "type": "integer" }
+          },
+          {
+            "name": "bill_date_start",
+            "in": "query",
+            "description": "账单日期起始(YYYY-MM-DD)",
+            "schema": { "type": "string", "format": "date" }
+          },
+          {
+            "name": "bill_date_end",
+            "in": "query",
+            "description": "账单日期结束(YYYY-MM-DD)",
+            "schema": { "type": "string", "format": "date" }
+          },
+          {
+            "name": "bill_type",
+            "in": "query",
+            "description": "账单类型",
+            "schema": {
+              "type": "string",
+              "enum": ["ALL", "SUCCESS", "REFUND"]
+            }
+          },
+          {
+            "name": "download_status",
+            "in": "query",
+            "description": "下载状态",
+            "schema": {
+              "type": "string",
+              "enum": ["pending", "processing", "completed", "failed"]
+            }
+          },
+          {
+            "name": "import_status",
+            "in": "query",
+            "description": "导入状态",
+            "schema": {
+              "type": "string",
+              "enum": ["pending", "processing", "completed", "failed"]
+            }
+          },
+          {
+            "name": "only_failed",
+            "in": "query",
+            "description": "仅显示下载失败的记录",
+            "schema": { "type": "boolean", "default": false }
+          },
+          {
+            "name": "order",
+            "in": "query",
+            "description": "排序方式 (asc=升序, desc=降序)",
+            "schema": { "type": "string", "enum": ["asc", "desc"], "default": "desc" }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": { "type": "integer", "default": 1 }
+          },
+          {
+            "name": "per_page",
+            "in": "query",
+            "schema": { "type": "integer", "default": 15, "minimum": 1, "maximum": 500 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": 200,
+                  "msg": "success",
+                  "data": {
+                    "list": [
+                      {
+                        "id": 1,
+                        "payment_channel_id": 1,
+                        "bill_date": "2025-11-14",
+                        "bill_type": "ALL",
+                        "file_path": "payment/bills/wechat/1/20251114_ALL.csv.gz",
+                        "download_status": "completed",
+                        "download_error": null,
+                        "download_started_at": "2025-11-15T02:00:00.000Z",
+                        "download_completed_at": "2025-11-15T02:00:15.000Z",
+                        "download_retry_count": 0,
+                        "bill_summary_transaction_count": 150,
+                        "bill_summary_settlement_amount": "15000.00",
+                        "import_status": "completed",
+                        "import_error": null,
+                        "import_started_at": "2025-11-15T02:00:20.000Z",
+                        "import_completed_at": "2025-11-15T02:01:30.000Z",
+                        "import_duration": 70,
+                        "import_total_transaction_count": 150,
+                        "import_total_new_count": 150,
+                        "import_total_updated_count": 0,
+                        "payment_channel": {
+                          "id": 1,
+                          "name": "微信支付-主渠道",
+                          "channel": "wechat"
+                        },
+                        "created_at": "2025-11-15T02:00:00.000Z",
+                        "updated_at": "2025-11-15T02:01:30.000Z"
+                      }
+                    ],
+                    "total": 1
+                  }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      },
+      "post": {
+        "tags": ["Finance/BillDownload"],
+        "summary": "手动触发账单下载",
+        "description": "手动发起账单下载任务,支持强制重新下载\n\n**测试用例:**\n1. 下载微信全量账单\n2. 下载支付宝全量账单\n3. 强制重新下载已存在的账单\n4. 下载微信退款账单\n5. 下载支付宝成功账单",
+        "operationId": "createBillDownload",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "Accept",
+            "in": "header",
+            "required": true,
+            "schema": { "type": "string" },
+            "example": "application/json"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["payment_channel_id", "bill_date"],
+                "properties": {
+                  "payment_channel_id": {
+                    "type": "integer",
+                    "description": "支付渠道ID"
+                  },
+                  "bill_date": {
+                    "type": "string",
+                    "format": "date",
+                    "description": "账单日期 (YYYY-MM-DD)"
+                  },
+                  "bill_type": {
+                    "type": "string",
+                    "enum": ["ALL", "SUCCESS", "REFUND"],
+                    "default": "ALL",
+                    "description": "账单类型: ALL-全量, SUCCESS-成功, REFUND-退款"
+                  },
+                  "force": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "是否强制重新下载"
+                  },
+                  "tar_type": {
+                    "type": "string",
+                    "enum": ["gzip", "zip"],
+                    "description": "压缩类型(支付宝专用)"
+                  }
+                }
+              },
+              "examples": {
+                "下载微信全量账单": {
+                  "summary": "下载微信全量账单",
+                  "value": {
+                    "payment_channel_id": 1,
+                    "bill_date": "2025-11-14",
+                    "bill_type": "ALL"
+                  }
+                },
+                "下载支付宝全量账单": {
+                  "summary": "下载支付宝全量账单(gzip)",
+                  "value": {
+                    "payment_channel_id": 2,
+                    "bill_date": "2025-11-14",
+                    "bill_type": "ALL",
+                    "tar_type": "gzip"
+                  }
+                },
+                "强制重新下载": {
+                  "summary": "强制重新下载已存在账单",
+                  "value": {
+                    "payment_channel_id": 1,
+                    "bill_date": "2025-11-14",
+                    "bill_type": "ALL",
+                    "force": true
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "下载任务已提交",
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": 202,
+                  "msg": "success",
+                  "data": {
+                    "id": 1,
+                    "payment_channel_id": 1,
+                    "bill_date": "2025-11-14",
+                    "bill_type": "ALL",
+                    "download_status": "pending",
+                    "import_status": "pending",
+                    "created_at": "2025-11-15T10:00:00.000Z"
+                  }
+                }
+              }
+            }
+          },
+          "422": { "$ref": "#/components/responses/ValidationError" }
+        }
+      }
+    },
+    "/finances/bill-downloads/{billDownload}": {
+      "get": {
+        "tags": ["Finance/BillDownload"],
+        "summary": "查看账单下载详情",
+        "description": "获取指定账单下载任务的详细信息,包括下载和导入状态",
+        "operationId": "getBillDownload",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "Accept",
+            "in": "header",
+            "required": true,
+            "schema": { "type": "string" },
+            "example": "application/json"
+          },
+          {
+            "name": "billDownload",
+            "in": "path",
+            "required": true,
+            "description": "账单下载任务ID",
+            "schema": { "type": "integer" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": 200,
+                  "msg": "success",
+                  "data": {
+                    "id": 1,
+                    "payment_channel_id": 1,
+                    "bill_date": "2025-11-14",
+                    "bill_type": "ALL",
+                    "file_path": "payment/bills/wechat/1/20251114_ALL.csv.gz",
+                    "download_status": "completed",
+                    "download_error": null,
+                    "download_started_at": "2025-11-15T02:00:00.000Z",
+                    "download_completed_at": "2025-11-15T02:00:15.000Z",
+                    "download_retry_count": 0,
+                    "download_last_attempt_at": "2025-11-15T02:00:00.000Z",
+                    "bill_summary_transaction_count": 150,
+                    "bill_summary_settlement_amount": "15000.00",
+                    "bill_summary_refund_amount": "0.00",
+                    "bill_summary_fee_amount": "90.00",
+                    "import_status": "completed",
+                    "import_error": null,
+                    "import_started_at": "2025-11-15T02:00:20.000Z",
+                    "import_completed_at": "2025-11-15T02:01:30.000Z",
+                    "import_duration": 70,
+                    "import_total_transaction_count": 150,
+                    "import_total_new_count": 150,
+                    "import_total_updated_count": 0,
+                    "import_total_settlement_amount": "15000.00",
+                    "payment_channel": {
+                      "id": 1,
+                      "name": "微信支付-主渠道",
+                      "channel": "wechat",
+                      "channel_text": "微信支付"
+                    },
+                    "created_at": "2025-11-15T02:00:00.000Z",
+                    "updated_at": "2025-11-15T02:01:30.000Z"
+                  }
+                }
+              }
+            }
+          },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/finances/bill-downloads/{billDownload}/download": {
+      "get": {
+        "tags": ["Finance/BillDownload"],
+        "summary": "下载账单文件",
+        "description": "下载已完成的账单文件\n\n**前置条件:**\n- 账单下载状态必须为 completed\n- 账单文件必须存在\n\n**返回:**\n- 成功: 返回文件流,浏览器自动下载\n- 失败: 返回 JSON 错误信息\n\n**文件命名规则:**\n格式: `{channel}_{billDate}_{billType}.{extension}`\n示例: `wechat_20251114_ALL.csv.gz`\n\n**测试用例:**\n1. 下载微信账单文件\n2. 下载支付宝账单文件\n3. 尝试下载未完成的账单(应返回 400 错误)\n4. 尝试下载不存在的文件(应返回 404 错误)",
+        "operationId": "downloadBillFile",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "Accept",
+            "in": "header",
+            "required": true,
+            "schema": { "type": "string" },
+            "example": "application/json"
+          },
+          {
+            "name": "billDownload",
+            "in": "path",
+            "required": true,
+            "description": "账单下载任务ID",
+            "schema": { "type": "integer" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功下载文件",
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            },
+            "headers": {
+              "Content-Disposition": {
+                "description": "文件下载响应头",
+                "schema": {
+                  "type": "string",
+                  "example": "attachment; filename=wechat_20251114_ALL.csv.gz"
+                }
+              },
+              "Content-Type": {
+                "description": "文件 MIME 类型",
+                "schema": {
+                  "type": "string",
+                  "example": "application/gzip"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "账单未下载完成",
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": 400,
+                  "msg": "账单文件尚未下载完成，无法下载",
+                  "data": null
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "文件不存在",
+            "content": {
+              "application/json": {
+                "examples": {
+                  "文件路径不存在": {
+                    "value": {
+                      "code": 404,
+                      "msg": "账单文件路径不存在",
+                      "data": null
+                    }
+                  },
+                  "文件不存在": {
+                    "value": {
+                      "code": 404,
+                      "msg": "账单文件不存在",
+                      "data": null
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "Token"
+      }
+    },
+    "responses": {
+      "Unauthorized": {
+        "description": "未授权",
+        "content": {
+          "application/json": {
+            "example": {
+              "code": 401,
+              "msg": "未授权访问",
+              "data": null
+            }
+          }
+        }
+      },
+      "NotFound": {
+        "description": "资源不存在",
+        "content": {
+          "application/json": {
+            "example": {
+              "code": 404,
+              "msg": "资源不存在",
+              "data": null
+            }
+          }
+        }
+      },
+      "ValidationError": {
+        "description": "数据校验失败",
+        "content": {
+          "application/json": {
+            "example": {
+              "code": 422,
+              "msg": "数据校验失败",
+              "data": {
+                "errors": {
+                  "payment_channel_id": ["支付渠道ID不能为空"],
+                  "bill_date": ["账单日期格式错误"]
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
