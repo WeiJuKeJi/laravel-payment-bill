@@ -25,13 +25,27 @@ Laravel 支付账单管理扩展包，支持微信支付、支付宝账单自动
 composer require weijukeji/laravel-payment-bill
 ```
 
-### 发布配置和迁移文件
+### 发布配置文件（必需）
 
 ```bash
 # 发布配置文件
 php artisan vendor:publish --tag=payment-bill-config
 
-# 发布迁移文件
+# 运行迁移（扩展包会自动加载迁移文件，无需发布）
+php artisan migrate
+```
+
+### 发布迁移文件（可选）
+
+**注意：迁移文件会自动从扩展包目录加载，通常不需要发布。**
+
+仅在以下情况需要发布迁移文件：
+- 需要自定义表名、字段或索引
+- 需要查看完整的数据库结构
+- 需要调整迁移执行顺序
+
+```bash
+# 发布迁移文件（可选）
 php artisan vendor:publish --tag=payment-bill-migrations
 
 # 运行迁移
