@@ -71,22 +71,39 @@ class PaymentBillServiceProvider extends ServiceProvider
             return;
         }
 
-        $this->callAfterResolving(Schedule::class, static function (Schedule $schedule): void {
-            // 每天凌晨 2 点下载前一天的账单
-            $schedule->command('payment-bill:download')
-                ->dailyAt('02:00')
-                ->timezone(config('app.timezone', 'Asia/Shanghai'))
-                ->withoutOverlapping()
-                ->runInBackground()
-                ->monitorName('支付账单-自动下载');
+        // 检查是否启用定时任务
+        if (! config('payment-bill.schedules.enabled', true)) {
+            return;
+        }
 
-            // 每天凌晨 2:30 导入下载完成的账单
-            $schedule->command('payment-bill:import')
-                ->dailyAt('02:30')
-                ->timezone(config('app.timezone', 'Asia/Shanghai'))
-                ->withoutOverlapping()
-                ->runInBackground()
-                ->monitorName('支付账单-自动导入');
+        $this->callAfterResolving(Schedule::class, static function (Schedule $schedule): void {
+            // 注册账单下载定时任务
+            if (config('payment-bill.schedules.download.enabled', true)) {
+                $downloadTime = config('payment-bill.schedules.download.time', '02:00');
+                $downloadTimezone = config('payment-bill.schedules.download.timezone')
+                    ?? config('app.timezone', 'Asia/Shanghai');
+
+                $schedule->command('payment-bill:download')
+                    ->dailyAt($downloadTime)
+                    ->timezone($downloadTimezone)
+                    ->withoutOverlapping()
+                    ->runInBackground()
+                    ->monitorName('支付账单-自动下载');
+            }
+
+            // 注册账单导入定时任务
+            if (config('payment-bill.schedules.import.enabled', true)) {
+                $importTime = config('payment-bill.schedules.import.time', '02:30');
+                $importTimezone = config('payment-bill.schedules.import.timezone')
+                    ?? config('app.timezone', 'Asia/Shanghai');
+
+                $schedule->command('payment-bill:import')
+                    ->dailyAt($importTime)
+                    ->timezone($importTimezone)
+                    ->withoutOverlapping()
+                    ->runInBackground()
+                    ->monitorName('支付账单-自动导入');
+            }
         });
     }
 

@@ -56,6 +56,16 @@ php artisan vendor:publish --tag=payment-bill-config
 - `queues` - 队列连接和队列名称配置
 - `route_prefix` - API 路由前缀（默认：api/payment-bill）
 - `guard` - 认证守卫（默认：sanctum）
+- `schedules` - 定时任务配置
+  - `enabled` - 是否启用自动定时任务（默认：true）
+  - `download` - 账单下载任务配置
+    - `enabled` - 是否启用（默认：true）
+    - `time` - 执行时间（默认：02:00）
+    - `timezone` - 时区（默认：使用 app.timezone）
+  - `import` - 账单导入任务配置
+    - `enabled` - 是否启用（默认：true）
+    - `time` - 执行时间（默认：02:30）
+    - `timezone` - 时区（默认：使用 app.timezone）
 
 ### 支付渠道配置
 
@@ -225,6 +235,30 @@ php artisan payment-bill:import --force
     'connection' => 'redis', // 使用 redis 队列
     'wechat_bill_import' => 'high-priority',
     'alipay_bill_import' => 'high-priority',
+],
+```
+
+### 自定义定时任务配置
+
+修改定时任务执行时间或禁用自动任务：
+
+```php
+// config/payment-bill.php
+'schedules' => [
+    // 完全禁用自动定时任务
+    'enabled' => false,
+
+    // 或者单独配置每个任务
+    'download' => [
+        'enabled' => true,
+        'time' => '03:00', // 改为凌晨3点执行
+        'timezone' => 'Asia/Shanghai',
+    ],
+    'import' => [
+        'enabled' => false, // 禁用自动导入，仅手动触发
+        'time' => '03:30',
+        'timezone' => null, // 使用 app.timezone 配置
+    ],
 ],
 ```
 
