@@ -31,6 +31,9 @@ class PaymentChannel extends Model
 
     /**
      * The attributes that are mass assignable.
+     *
+     * 注意：敏感字段（密钥、私钥、证书路径）不在此列表中，
+     * 需要在 Controller 中通过验证后手动设置
      */
     protected $fillable = [
         'name',
@@ -39,18 +42,8 @@ class PaymentChannel extends Model
         'is_enabled',
         'remark',
         'alipay_app_id',
-        'alipay_app_secret_cert',
-        'alipay_app_public_cert_path',
-        'alipay_public_cert_path',
-        'alipay_root_cert_path',
         'alipay_service_provider_id',
-        'alipay_app_auth_token',
         'wechat_mch_id',
-        'wechat_mch_secret_key_v2',
-        'wechat_mch_secret_key',
-        'wechat_mch_secret_cert_path',
-        'wechat_mch_public_cert_path',
-        'wechat_public_cert_path',
         'wechat_app_id',
         'wechat_mp_app_id',
         'wechat_mini_app_id',

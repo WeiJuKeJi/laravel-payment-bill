@@ -119,4 +119,32 @@ class BillDownload extends Model
     {
         return $this->provideFilter(\WeiJuKeJi\PaymentBill\ModelFilters\BillDownloadFilter::class);
     }
+
+    /**
+     * 访问器 - 下载状态文本
+     */
+    public function getDownloadStatusTextAttribute(): string
+    {
+        return match ($this->download_status) {
+            self::DOWNLOAD_STATUS_PENDING => '待下载',
+            self::DOWNLOAD_STATUS_PROCESSING => '下载中',
+            self::DOWNLOAD_STATUS_COMPLETED => '已完成',
+            self::DOWNLOAD_STATUS_FAILED => '下载失败',
+            default => $this->download_status,
+        };
+    }
+
+    /**
+     * 访问器 - 导入状态文本
+     */
+    public function getImportStatusTextAttribute(): string
+    {
+        return match ($this->import_status) {
+            self::IMPORT_STATUS_PENDING => '待导入',
+            self::IMPORT_STATUS_PROCESSING => '导入中',
+            self::IMPORT_STATUS_COMPLETED => '已完成',
+            self::IMPORT_STATUS_FAILED => '导入失败',
+            default => $this->import_status,
+        };
+    }
 }

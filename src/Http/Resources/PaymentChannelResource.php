@@ -7,6 +7,9 @@ use Illuminate\Http\Resources\Json\JsonResource;
 class PaymentChannelResource extends JsonResource
 {
     /**
+     * 注意：为确保安全，此 Resource 不返回任何敏感字段（密钥、私钥、证书路径、auth_token）。
+     * 仅返回用于展示和配置管理的公开信息。
+     *
      * @param  \Illuminate\Http\Request  $request
      */
     public function toArray($request): array
@@ -21,18 +24,8 @@ class PaymentChannelResource extends JsonResource
             'is_enabled_text' => $this->is_enabled_text,
             'remark' => $this->remark,
             'alipay_app_id' => $this->alipay_app_id,
-            'alipay_app_secret_cert' => $this->alipay_app_secret_cert,
-            'alipay_app_public_cert_path' => $this->alipay_app_public_cert_path,
-            'alipay_public_cert_path' => $this->alipay_public_cert_path,
-            'alipay_root_cert_path' => $this->alipay_root_cert_path,
             'alipay_service_provider_id' => $this->alipay_service_provider_id,
-            'alipay_app_auth_token' => $this->alipay_app_auth_token,
             'wechat_mch_id' => $this->wechat_mch_id,
-            'wechat_mch_secret_key_v2' => $this->wechat_mch_secret_key_v2,
-            'wechat_mch_secret_key' => $this->wechat_mch_secret_key,
-            'wechat_mch_secret_cert_path' => $this->wechat_mch_secret_cert_path,
-            'wechat_mch_public_cert_path' => $this->wechat_mch_public_cert_path,
-            'wechat_public_cert_path' => $this->wechat_public_cert_path,
             'wechat_app_id' => $this->wechat_app_id,
             'wechat_mp_app_id' => $this->wechat_mp_app_id,
             'wechat_mini_app_id' => $this->wechat_mini_app_id,
@@ -41,8 +34,8 @@ class PaymentChannelResource extends JsonResource
             'wechat_sub_mp_app_id' => $this->wechat_sub_mp_app_id,
             'wechat_sub_mini_app_id' => $this->wechat_sub_mini_app_id,
             'extra' => $this->extra,
-            'created_at' => (string) $this->created_at,
-            'updated_at' => (string) $this->updated_at,
+            'created_at' => $this->created_at?->toIso8601String(),
+            'updated_at' => $this->updated_at?->toIso8601String(),
         ];
     }
 }

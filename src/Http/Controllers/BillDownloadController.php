@@ -59,7 +59,7 @@ class BillDownloadController extends Controller
             $options
         );
 
-        return $this->respondWithResource($record, BillDownloadResource::class, 'success', 202);
+        return $this->respondWithResource($record, BillDownloadResource::class, 'created', 202);
     }
 
     public function show(BillDownload $billDownload): JsonResponse

@@ -4,6 +4,7 @@ namespace WeiJuKeJi\PaymentBill\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use WeiJuKeJi\PaymentBill\Models\PaymentChannel;
 
 class BillDownloadStoreRequest extends FormRequest
 {
@@ -18,7 +19,7 @@ class BillDownloadStoreRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'payment_channel_id' => ['required', 'integer', 'exists:mdm_payment_channels,id'],
+            'payment_channel_id' => ['required', 'integer', Rule::exists(PaymentChannel::class, 'id')],
             'bill_date' => ['required', 'date', 'before_or_equal:today'],
             'bill_type' => ['nullable', 'string', 'max:64'],
             'force' => ['sometimes', 'boolean'],

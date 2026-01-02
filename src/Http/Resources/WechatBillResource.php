@@ -25,7 +25,7 @@ class WechatBillResource extends JsonResource
                 'channel' => $this->paymentChannel->channel,
                 'mode' => $this->paymentChannel->mode,
             ]),
-            'trade_time' => $this->trade_time?->toDateTimeString(),
+            'trade_time' => $this->trade_time?->toIso8601String(),
             'appid' => $this->appid,
             'mch_id' => $this->mch_id,
             'special_mch_id' => $this->special_mch_id,
@@ -56,8 +56,8 @@ class WechatBillResource extends JsonResource
             'goods_name' => $this->goods_name,
             'goods_info' => $this->goods_info,
             'is_order_associated' => $this->is_order_associated,
-            'created_at' => $this->created_at?->toDateTimeString(),
-            'updated_at' => $this->updated_at?->toDateTimeString(),
+            'created_at' => $this->created_at?->toIso8601String(),
+            'updated_at' => $this->updated_at?->toIso8601String(),
         ];
     }
 }
