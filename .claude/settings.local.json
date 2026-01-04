@@ -7,7 +7,14 @@
       "Bash(git add .)",
       "Bash(git commit:*)",
       "Bash(git push:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git tag:*)",
+      "Bash(composer update:*)",
+      "Bash(php artisan vendor:publish:*)",
+      "Bash(php artisan route:list:*)",
+      "Bash(php artisan list:*)",
+      "Bash(ls:*)",
+      "Bash(grep:*)"
     ]
   }
 }

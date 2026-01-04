@@ -25,13 +25,13 @@ class AlipayBillResource extends JsonResource
                 'channel' => $this->paymentChannel->channel,
                 'mode' => $this->paymentChannel->mode,
             ]),
-            'bill_date' => $this->bill_date?->toIso8601String(),
+            'bill_date' => $this->bill_date?->toDateString(),
             'alipay_trade_no' => $this->alipay_trade_no,
             'merchant_order_no' => $this->merchant_order_no,
             'biz_type' => $this->biz_type,
             'goods_name' => $this->goods_name,
-            'created_time' => $this->created_time?->toIso8601String(),
-            'completed_time' => $this->completed_time?->toIso8601String(),
+            'created_time' => $this->created_time?->toDateTimeString(),
+            'completed_time' => $this->completed_time?->toDateTimeString(),
             'store_id' => $this->store_id,
             'store_name' => $this->store_name,
             'operator' => $this->operator,
@@ -53,8 +53,8 @@ class AlipayBillResource extends JsonResource
             'coupon_name' => $this->coupon_name,
             'refund_request_no' => $this->refund_request_no,
             'remark' => $this->remark,
-            'created_at' => $this->created_at?->toIso8601String(),
-            'updated_at' => $this->updated_at?->toIso8601String(),
+            'created_at' => $this->created_at?->toDateTimeString(),
+            'updated_at' => $this->updated_at?->toDateTimeString(),
         ];
     }
 }
