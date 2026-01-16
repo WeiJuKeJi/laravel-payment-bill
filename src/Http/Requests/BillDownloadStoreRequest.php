@@ -14,6 +14,23 @@ class BillDownloadStoreRequest extends FormRequest
     }
 
     /**
+     * 准备验证数据，将空字符串转换为 null。
+     */
+    protected function prepareForValidation(): void
+    {
+        $data = [];
+
+        // 将空字符串的 tar_type 转换为 null
+        if ($this->has('tar_type') && $this->input('tar_type') === '') {
+            $data['tar_type'] = null;
+        }
+
+        if (! empty($data)) {
+            $this->merge($data);
+        }
+    }
+
+    /**
      * @return array<string, mixed>
      */
     public function rules(): array
@@ -23,7 +40,7 @@ class BillDownloadStoreRequest extends FormRequest
             'bill_date' => ['required', 'date', 'before_or_equal:today'],
             'bill_type' => ['nullable', 'string', 'max:64'],
             'force' => ['sometimes', 'boolean'],
-            'tar_type' => ['sometimes', 'string', Rule::in(['GZIP', 'ZIP', 'CSV', 'NONE'])],
+            'tar_type' => ['nullable', 'string', Rule::in(['GZIP', 'ZIP', 'CSV', 'NONE'])],
         ];
     }
 

@@ -2,7 +2,7 @@
   "openapi": "3.0.3",
   "info": {
     "title": "账单下载管理 API",
-    "description": "管理微信和支付宝账单下载任务,支持手动触发下载和查看下载状态",
+    "description": "管理微信和支付宝账单下载任务,支持手动触发下载和查看下载状态\n\n**主要功能:**\n- 获取账单下载记录列表（支持筛选和分页）\n- 手动触发账单下载\n- 查看账单下载详情\n- 下载账单文件到浏览器\n- 重新下载账单（从支付平台）\n- 重新导入账单数据（解析文件并导入数据库）\n\n**账单操作说明:**\n1. 下载文件到浏览器: GET /bill-downloads/{id}/file\n2. 重新下载账单: POST /bill-downloads/{id}/download\n3. 重新导入数据: POST /bill-downloads/{id}/import",
     "version": "1.0.0"
   },
   "paths": {
@@ -183,8 +183,8 @@
                   },
                   "tar_type": {
                     "type": "string",
-                    "enum": ["gzip", "zip"],
-                    "description": "压缩类型(支付宝专用)"
+                    "enum": ["GZIP", "ZIP"],
+                    "description": "压缩格式（仅支付宝，可选）。微信账单无需指定此参数。默认：GZIP"
                   }
                 }
               },
@@ -198,12 +198,12 @@
                   }
                 },
                 "下载支付宝全量账单": {
-                  "summary": "下载支付宝全量账单(gzip)",
+                  "summary": "下载支付宝全量账单（可选指定压缩格式）",
                   "value": {
                     "payment_channel_id": 2,
                     "bill_date": "2025-11-14",
                     "bill_type": "ALL",
-                    "tar_type": "gzip"
+                    "tar_type": "GZIP"
                   }
                 },
                 "强制重新下载": {
@@ -317,12 +317,12 @@
         }
       }
     },
-    "/payment-bill/bill-downloads/{billDownload}/download": {
+    "/payment-bill/bill-downloads/{billDownload}/file": {
       "get": {
         "tags": ["PaymentBill/BillDownload"],
-        "summary": "下载账单文件",
-        "description": "下载已完成的账单文件\n\n**前置条件:**\n- 账单下载状态必须为 completed\n- 账单文件必须存在\n\n**返回:**\n- 成功: 返回文件流,浏览器自动下载\n- 失败: 返回 JSON 错误信息\n\n**文件命名规则:**\n格式: `{channel}_{billDate}_{billType}.{extension}`\n示例: `wechat_20251114_ALL.csv.gz`\n\n**测试用例:**\n1. 下载微信账单文件\n2. 下载支付宝账单文件\n3. 尝试下载未完成的账单(应返回 400 错误)\n4. 尝试下载不存在的文件(应返回 404 错误)",
-        "operationId": "downloadBillFile",
+        "summary": "下载账单文件到浏览器",
+        "description": "将服务器上已保存的账单文件下载到用户电脑\n\n**前置条件:**\n- 账单下载状态必须为 completed\n- 账单文件必须存在\n\n**返回:**\n- 成功: 返回文件流,浏览器自动下载\n- 失败: 返回 JSON 错误信息\n\n**文件命名规则:**\n格式: `{channel}_{billDate}_{billType}.{extension}`\n示例: `wechat_20251114_ALL.csv.gz`\n\n**测试用例:**\n1. 下载微信账单文件\n2. 下载支付宝账单文件\n3. 尝试下载未完成的账单(应返回 400 错误)\n4. 尝试下载不存在的文件(应返回 404 错误)",
+        "operationId": "downloadBillFileToClient",
         "security": [{ "bearerAuth": [] }],
         "parameters": [
           {
@@ -374,7 +374,7 @@
               "application/json": {
                 "example": {
                   "code": 400,
-                  "msg": "账单文件尚未下载完成，无法下载",
+                  "msg": "账单文件尚未下载完成",
                   "data": null
                 }
               }
@@ -404,6 +404,242 @@
             }
           },
           "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/payment-bill/bill-downloads/{billDownload}/download": {
+      "post": {
+        "tags": ["PaymentBill/BillDownload"],
+        "summary": "重新下载账单",
+        "description": "从支付平台重新下载该账单文件到服务器，会覆盖原有文件\n\n**功能说明:**\n- 从支付平台（微信/支付宝）重新获取账单文件\n- 强制覆盖服务器上已存在的账单文件\n- 更新下载状态为 pending\n- 异步执行下载任务\n\n**使用场景:**\n- 账单下载失败，需要重新下载\n- 账单文件已损坏或丢失\n- 需要获取最新的账单数据\n\n**测试用例:**\n1. 重新下载微信账单\n2. 重新下载支付宝账单\n3. 下载失败后重试",
+        "operationId": "redownloadBill",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "Accept",
+            "in": "header",
+            "required": true,
+            "schema": { "type": "string" },
+            "example": "application/json"
+          },
+          {
+            "name": "billDownload",
+            "in": "path",
+            "required": true,
+            "description": "账单下载任务ID",
+            "schema": { "type": "integer" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "下载任务已派发",
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": 200,
+                  "msg": "账单下载任务已派发",
+                  "data": {
+                    "id": 1216,
+                    "payment_channel_id": 1,
+                    "bill_date": "2022-07-24",
+                    "bill_type": "ALL",
+                    "download_status": "pending",
+                    "import_status": "completed",
+                    "file_path": "payment/bills/wechat/1/20220724.csv",
+                    "file_size": null,
+                    "downloaded_at": null,
+                    "imported_at": "2022-07-25 10:30:00",
+                    "payment_channel": {
+                      "id": 1,
+                      "name": "微信支付渠道",
+                      "channel": "wechat",
+                      "is_enabled": true
+                    },
+                    "created_at": "2022-07-24T10:00:00.000Z",
+                    "updated_at": "2022-07-25T15:30:00.000Z"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "请求错误",
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": 400,
+                  "msg": "账单缺少关联的支付渠道信息",
+                  "data": null
+                }
+              }
+            }
+          },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "500": {
+            "description": "服务器错误",
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": 500,
+                  "msg": "下载任务派发失败：连接超时",
+                  "data": null
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/payment-bill/bill-downloads/{billDownload}/import": {
+      "post": {
+        "tags": ["PaymentBill/BillDownload"],
+        "summary": "重新导入账单数据",
+        "description": "将账单文件数据重新解析并导入到账单明细表，会覆盖已存在的数据\n\n**功能说明:**\n- 解析账单文件中的交易记录\n- 强制覆盖数据库中已存在的账单数据\n- 更新导入状态为 pending\n- 异步执行导入任务\n- 支持微信和支付宝两种渠道\n\n**前置条件:**\n- 账单下载状态必须为 completed\n- 账单文件必须存在\n- 支付渠道信息完整\n\n**使用场景:**\n- 账单数据导入失败\n- 账单文件有更新，需要重新解析\n- 数据异常，需要重新导入\n\n**测试用例:**\n1. 重新导入微信账单数据\n2. 重新导入支付宝账单数据\n3. 导入失败后重试\n4. 尝试导入未下载完成的账单(应返回 400 错误)\n5. 尝试导入不存在的文件(应返回 404 错误)",
+        "operationId": "reimportBillData",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "Accept",
+            "in": "header",
+            "required": true,
+            "schema": { "type": "string" },
+            "example": "application/json"
+          },
+          {
+            "name": "billDownload",
+            "in": "path",
+            "required": true,
+            "description": "账单下载任务ID",
+            "schema": { "type": "integer" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "导入任务已派发",
+            "content": {
+              "application/json": {
+                "examples": {
+                  "微信账单": {
+                    "summary": "微信账单导入成功",
+                    "value": {
+                      "code": 200,
+                      "msg": "微信账单导入任务已派发",
+                      "data": {
+                        "id": 1216,
+                        "payment_channel_id": 1,
+                        "bill_date": "2022-07-24",
+                        "bill_type": "ALL",
+                        "download_status": "completed",
+                        "import_status": "pending",
+                        "file_path": "payment/bills/wechat/1/20220724.csv",
+                        "file_size": 1024000,
+                        "downloaded_at": "2022-07-25 10:00:00",
+                        "imported_at": null,
+                        "payment_channel": {
+                          "id": 1,
+                          "name": "微信支付渠道",
+                          "channel": "wechat",
+                          "is_enabled": true
+                        },
+                        "created_at": "2022-07-24T10:00:00.000Z",
+                        "updated_at": "2022-07-25T15:30:00.000Z"
+                      }
+                    }
+                  },
+                  "支付宝账单": {
+                    "summary": "支付宝账单导入成功",
+                    "value": {
+                      "code": 200,
+                      "msg": "支付宝账单导入任务已派发",
+                      "data": {
+                        "id": 1217,
+                        "payment_channel_id": 2,
+                        "bill_date": "2022-07-24",
+                        "bill_type": "ALL",
+                        "download_status": "completed",
+                        "import_status": "pending",
+                        "file_path": "payment/bills/alipay/2/20220724.csv",
+                        "file_size": 2048000,
+                        "downloaded_at": "2022-07-25 10:00:00",
+                        "imported_at": null,
+                        "payment_channel": {
+                          "id": 2,
+                          "name": "支付宝渠道",
+                          "channel": "alipay",
+                          "is_enabled": true
+                        },
+                        "created_at": "2022-07-24T10:00:00.000Z",
+                        "updated_at": "2022-07-25T15:30:00.000Z"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "请求错误",
+            "content": {
+              "application/json": {
+                "examples": {
+                  "账单未下载完成": {
+                    "value": {
+                      "code": 400,
+                      "msg": "账单文件尚未下载完成",
+                      "data": null
+                    }
+                  },
+                  "文件路径不存在": {
+                    "value": {
+                      "code": 400,
+                      "msg": "账单文件路径不存在",
+                      "data": null
+                    }
+                  },
+                  "支付渠道缺失": {
+                    "value": {
+                      "code": 400,
+                      "msg": "账单缺少关联的支付渠道信息",
+                      "data": null
+                    }
+                  },
+                  "不支持的渠道": {
+                    "value": {
+                      "code": 400,
+                      "msg": "不支持的支付渠道类型：other",
+                      "data": null
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "文件不存在",
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": 404,
+                  "msg": "账单文件不存在或已被删除",
+                  "data": null
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "500": {
+            "description": "服务器错误",
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": 500,
+                  "msg": "导入任务派发失败：队列连接失败",
+                  "data": null
+                }
+              }
+            }
+          }
         }
       }
     }
