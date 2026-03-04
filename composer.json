@@ -7,6 +7,7 @@
         "bill",
         "wechat",
         "alipay",
+        "reconciliation",
         "yansongda",
         "weijukeji"
     ],
@@ -24,7 +25,8 @@
         "illuminate/console": "^10.0|^11.0|^12.0",
         "illuminate/database": "^10.0|^11.0|^12.0",
         "yansongda/pay": "^3.0",
-        "tucker-eric/eloquentfilter": "^3.0"
+        "tucker-eric/eloquentfilter": "^3.0",
+        "weijukeji/laravel-enum-options": "^1.0"
     },
     "require-dev": {
         "orchestra/testbench": "^8.0|^9.0",

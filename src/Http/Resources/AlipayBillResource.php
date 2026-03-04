@@ -3,11 +3,12 @@
 namespace WeiJuKeJi\PaymentBill\Http\Resources;
 
 use Illuminate\Http\Resources\Json\JsonResource;
+use WeiJuKeJi\PaymentBill\Enums\ReconciliationStatusEnum;
 
 /**
  * 支付宝账单明细资源。
  *
- * @mixin \Modules\Finance\Models\AlipayBill
+ * @mixin \WeiJuKeJi\PaymentBill\Models\AlipayBill
  */
 class AlipayBillResource extends JsonResource
 {
@@ -53,8 +54,32 @@ class AlipayBillResource extends JsonResource
             'coupon_name' => $this->coupon_name,
             'refund_request_no' => $this->refund_request_no,
             'remark' => $this->remark,
+            'reconciliation' => $this->formatReconciliation(),
             'created_at' => $this->created_at?->toDateTimeString(),
             'updated_at' => $this->updated_at?->toDateTimeString(),
         ];
     }
+
+    /**
+     * 格式化对账信息
+     */
+    protected function formatReconciliation(): array
+    {
+        // 获取枚举类
+        $enumClass = config(
+            'payment-bill.enums.reconciliation_status',
+            ReconciliationStatusEnum::class
+        );
+
+        return [
+            'status' => $enumClass::toArraySafe($this->reconciliation_status),
+            'business_type' => $this->business_type,
+            'business_id' => $this->business_id,
+            'reconciled_at' => $this->reconciled_at?->toDateTimeString(),
+            'amount_diff' => $this->reconciliation_amount_diff,
+            'remark' => $this->reconciliation_remark,
+            'reconciled_by' => $this->reconciled_by,
+        ];
+    }
 }
+

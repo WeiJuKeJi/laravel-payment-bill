@@ -3,11 +3,12 @@
 namespace WeiJuKeJi\PaymentBill\Http\Resources;
 
 use Illuminate\Http\Resources\Json\JsonResource;
+use WeiJuKeJi\PaymentBill\Enums\ReconciliationStatusEnum;
 
 /**
  * 微信账单明细资源。
  *
- * @mixin \Modules\Finance\Models\WechatBill
+ * @mixin \WeiJuKeJi\PaymentBill\Models\WechatBill
  */
 class WechatBillResource extends JsonResource
 {
@@ -55,9 +56,32 @@ class WechatBillResource extends JsonResource
             ],
             'goods_name' => $this->goods_name,
             'goods_info' => $this->goods_info,
-            'is_order_associated' => $this->is_order_associated,
+            'reconciliation' => $this->formatReconciliation(),
             'created_at' => $this->created_at?->toDateTimeString(),
             'updated_at' => $this->updated_at?->toDateTimeString(),
         ];
     }
+
+    /**
+     * 格式化对账信息
+     */
+    protected function formatReconciliation(): array
+    {
+        // 获取枚举类
+        $enumClass = config(
+            'payment-bill.enums.reconciliation_status',
+            ReconciliationStatusEnum::class
+        );
+
+        return [
+            'status' => $enumClass::toArraySafe($this->reconciliation_status),
+            'business_type' => $this->business_type,
+            'business_id' => $this->business_id,
+            'reconciled_at' => $this->reconciled_at?->toDateTimeString(),
+            'amount_diff' => $this->reconciliation_amount_diff,
+            'remark' => $this->reconciliation_remark,
+            'reconciled_by' => $this->reconciled_by,
+        ];
+    }
 }
+

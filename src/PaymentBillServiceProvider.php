@@ -59,6 +59,7 @@ class PaymentBillServiceProvider extends ServiceProvider
         $this->commands([
             Console\Commands\DownloadBillsCommand::class,
             Console\Commands\ImportBillsCommand::class,
+            Console\Commands\ImportLocalBillFilesCommand::class,
         ]);
     }
 

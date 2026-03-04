@@ -6,6 +6,8 @@ use EloquentFilter\Filterable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\MorphTo;
+use WeiJuKeJi\PaymentBill\Concerns\Reconcilable;
 
 /**
  * 支付宝账单明细模型。
@@ -14,6 +16,7 @@ class AlipayBill extends Model
 {
     use HasFactory;
     use Filterable;
+    use Reconcilable;
 
     protected $table = 'payment_bill_alipay_bills';
 
@@ -48,6 +51,14 @@ class AlipayBill extends Model
         'service_fee_amount',
         'profit_sharing_amount',
         'remark',
+        // 对账相关字段
+        'reconciliation_status',
+        'business_type',
+        'business_id',
+        'reconciled_at',
+        'reconciliation_amount_diff',
+        'reconciliation_remark',
+        'reconciled_by',
     ];
 
     /**
@@ -68,6 +79,9 @@ class AlipayBill extends Model
         'card_amount' => 'decimal:2',
         'service_fee_amount' => 'decimal:2',
         'profit_sharing_amount' => 'decimal:2',
+        // 对账相关字段
+        'reconciled_at' => 'datetime',
+        'reconciliation_amount_diff' => 'decimal:2',
     ];
 
     /**
@@ -76,6 +90,14 @@ class AlipayBill extends Model
     public function paymentChannel(): BelongsTo
     {
         return $this->belongsTo(PaymentChannel::class);
+    }
+
+    /**
+     * 多态关联业务订单。
+     */
+    public function business(): MorphTo
+    {
+        return $this->morphTo();
     }
 
     /**

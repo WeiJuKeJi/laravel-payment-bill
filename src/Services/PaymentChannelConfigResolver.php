@@ -51,6 +51,8 @@ class PaymentChannelConfigResolver
     {
         $certConfig = $this->buildWechatCertificates($channel);
 
+        ray($channel);
+
         return array_filter(
             [
                 'wechat' => [

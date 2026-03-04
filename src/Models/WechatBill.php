@@ -6,6 +6,8 @@ use EloquentFilter\Filterable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\MorphTo;
+use WeiJuKeJi\PaymentBill\Concerns\Reconcilable;
 
 /**
  * 微信账单明细模型。
@@ -14,6 +16,7 @@ class WechatBill extends Model
 {
     use HasFactory;
     use Filterable;
+    use Reconcilable;
 
     protected $table = 'payment_bill_wechat_bills';
 
@@ -48,7 +51,14 @@ class WechatBill extends Model
         'fee_amount',
         'fee_rate',
         'refund_apply_amount',
-        'is_order_associated',
+        // 对账相关字段
+        'reconciliation_status',
+        'business_type',
+        'business_id',
+        'reconciled_at',
+        'reconciliation_amount_diff',
+        'reconciliation_remark',
+        'reconciled_by',
     ];
 
     /**
@@ -63,7 +73,9 @@ class WechatBill extends Model
         'refund_voucher_amount' => 'decimal:2',
         'fee_amount' => 'decimal:2',
         'refund_apply_amount' => 'decimal:2',
-        'is_order_associated' => 'boolean',
+        // 对账相关字段
+        'reconciled_at' => 'datetime',
+        'reconciliation_amount_diff' => 'decimal:2',
     ];
 
     /**
@@ -72,6 +84,14 @@ class WechatBill extends Model
     public function paymentChannel(): BelongsTo
     {
         return $this->belongsTo(PaymentChannel::class);
+    }
+
+    /**
+     * 多态关联业务订单。
+     */
+    public function business(): MorphTo
+    {
+        return $this->morphTo();
     }
 
     /**

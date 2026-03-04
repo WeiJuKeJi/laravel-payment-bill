@@ -1,0 +1,398 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "本地账单文件导入 API",
+    "description": "支持批量上传历史账单文件(CSV格式),自动解析日期并创建账单下载记录,可选择性触发账单数据导入任务",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/payment-bill/local-bill-files/import": {
+      "post": {
+        "tags": ["PaymentBill/LocalBillFileImport"],
+        "summary": "批量导入本地账单文件",
+        "description": "上传一个或多个历史账单文件(CSV格式),系统将:\n1. 验证文件格式(必须是CSV)\n2. 解析文件名获取账单日期(支持 YYYY-MM-DD_ALL.csv 或 YYYYMMDD.csv)\n3. 将文件存储到规范路径\n4. 创建或更新 BillDownload 记录\n5. 可选自动触发账单数据导入任务\n\n**使用场景:**\n- 导入历史账单(微信仅支持下载最近3个月)\n- 批量补充数据\n- 数据迁移\n\n**测试用例:**\n1. 单文件导入: 上传1个文件,不强制覆盖,不自动导入\n2. 多文件导入: 上传多个文件,自动按日期排序\n3. 强制覆盖: `force=true`,覆盖已存在的记录\n4. 自动导入数据: `auto_import=true`,导入文件后自动触发数据导入任务\n5. 文件名解析测试:\n   - `2022-07-24_ALL.csv` → 日期:2022-07-24\n   - `20220724.csv` → 日期:2022-07-24\n6. 错误处理:\n   - 上传非CSV文件 → 返回验证错误\n   - 文件名无法解析日期 → 返回错误信息\n   - 支付渠道不存在 → 返回404\n   - 支付渠道已禁用 → 返回错误",
+        "operationId": "importLocalBillFiles",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": ["payment_channel_id", "files"],
+                "properties": {
+                  "payment_channel_id": {
+                    "type": "integer",
+                    "description": "支付渠道ID",
+                    "example": 1
+                  },
+                  "files": {
+                    "type": "array",
+                    "description": "账单文件列表(CSV格式,最多100个,单个文件不超过10MB)",
+                    "items": {
+                      "type": "string",
+                      "format": "binary"
+                    },
+                    "minItems": 1,
+                    "maxItems": 100
+                  },
+                  "bill_type": {
+                    "type": "string",
+                    "description": "账单类型(默认:ALL)",
+                    "enum": ["ALL", "SUCCESS", "REFUND"],
+                    "default": "ALL",
+                    "example": "ALL"
+                  },
+                  "force": {
+                    "type": "boolean",
+                    "description": "强制覆盖已存在的记录(默认:false)",
+                    "default": false,
+                    "example": false
+                  },
+                  "auto_import": {
+                    "type": "boolean",
+                    "description": "导入文件后自动触发账单数据导入任务(默认:false)",
+                    "default": false,
+                    "example": false
+                  }
+                }
+              },
+              "examples": {
+                "singleFile": {
+                  "summary": "单文件导入",
+                  "value": {
+                    "payment_channel_id": 1,
+                    "files": ["(binary)"],
+                    "bill_type": "ALL",
+                    "force": false,
+                    "auto_import": false
+                  }
+                },
+                "multipleFilesWithAutoImport": {
+                  "summary": "多文件导入并自动导入数据",
+                  "value": {
+                    "payment_channel_id": 1,
+                    "files": ["(binary)", "(binary)", "(binary)"],
+                    "bill_type": "ALL",
+                    "force": false,
+                    "auto_import": true
+                  }
+                },
+                "forceOverwrite": {
+                  "summary": "强制覆盖已存在的记录",
+                  "value": {
+                    "payment_channel_id": 1,
+                    "files": ["(binary)"],
+                    "bill_type": "ALL",
+                    "force": true,
+                    "auto_import": true
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "导入完成(全部成功)",
+            "content": {
+              "application/json": {
+                "examples": {
+                  "allSuccess": {
+                    "summary": "全部导入成功",
+                    "value": {
+                      "code": 200,
+                      "msg": "导入完成",
+                      "data": {
+                        "total": 3,
+                        "created": 2,
+                        "updated": 1,
+                        "skipped": 0,
+                        "failed": 0,
+                        "imported": 3,
+                        "details": [
+                          {
+                            "filename": "2022-07-24_ALL.csv",
+                            "date": "2022-07-24",
+                            "action": "created",
+                            "success": true,
+                            "message": "新建成功，已派发导入任务",
+                            "imported": true
+                          },
+                          {
+                            "filename": "2022-07-25_ALL.csv",
+                            "date": "2022-07-25",
+                            "action": "updated",
+                            "success": true,
+                            "message": "更新成功，已派发导入任务",
+                            "imported": true
+                          },
+                          {
+                            "filename": "20220726.csv",
+                            "date": "2022-07-26",
+                            "action": "created",
+                            "success": true,
+                            "message": "新建成功，已派发导入任务",
+                            "imported": true
+                          }
+                        ]
+                      }
+                    }
+                  },
+                  "someSkipped": {
+                    "summary": "部分文件已存在被跳过",
+                    "value": {
+                      "code": 200,
+                      "msg": "导入完成",
+                      "data": {
+                        "total": 3,
+                        "created": 2,
+                        "updated": 0,
+                        "skipped": 1,
+                        "failed": 0,
+                        "imported": 0,
+                        "details": [
+                          {
+                            "filename": "2022-07-24_ALL.csv",
+                            "date": "2022-07-24",
+                            "action": "created",
+                            "success": true,
+                            "message": "新建成功"
+                          },
+                          {
+                            "filename": "2022-07-25_ALL.csv",
+                            "date": "2022-07-25",
+                            "action": "skipped",
+                            "success": true,
+                            "message": "已存在，跳过"
+                          },
+                          {
+                            "filename": "20220726.csv",
+                            "date": "2022-07-26",
+                            "action": "created",
+                            "success": true,
+                            "message": "新建成功"
+                          }
+                        ]
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "207": {
+            "description": "部分文件导入失败(Multi-Status)",
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": 207,
+                  "msg": "部分文件导入失败，请检查详情",
+                  "data": {
+                    "total": 3,
+                    "created": 1,
+                    "updated": 0,
+                    "skipped": 0,
+                    "failed": 2,
+                    "imported": 1,
+                    "details": [
+                      {
+                        "filename": "2022-07-24_ALL.csv",
+                        "date": "2022-07-24",
+                        "action": "created",
+                        "success": true,
+                        "message": "新建成功，已派发导入任务",
+                        "imported": true
+                      },
+                      {
+                        "filename": "invalid_filename.csv",
+                        "date": "2022-07-25",
+                        "action": "failed",
+                        "success": false,
+                        "message": "无法从文件名解析日期：invalid_filename.csv。支持的格式：YYYY-MM-DD_ALL.csv 或 YYYYMMDD.csv"
+                      },
+                      {
+                        "filename": "2022-07-26_ALL.csv",
+                        "date": "2022-07-26",
+                        "action": "failed",
+                        "success": false,
+                        "message": "数据库错误:..."
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "客户端错误",
+            "content": {
+              "application/json": {
+                "examples": {
+                  "validationError": {
+                    "summary": "验证错误",
+                    "value": {
+                      "code": 400,
+                      "msg": "账单文件必须是 CSV 或 TXT 格式",
+                      "errors": {
+                        "files.0": ["账单文件必须是 CSV 或 TXT 格式"]
+                      }
+                    }
+                  },
+                  "channelDisabled": {
+                    "summary": "支付渠道已禁用",
+                    "value": {
+                      "code": 400,
+                      "msg": "支付渠道 微信支付 当前已禁用"
+                    }
+                  },
+                  "invalidFilename": {
+                    "summary": "文件名格式错误",
+                    "value": {
+                      "code": 400,
+                      "msg": "无法从文件名解析日期：test.csv。支持的格式：YYYY-MM-DD_ALL.csv 或 YYYYMMDD.csv"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未认证",
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "Unauthenticated."
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "资源不存在",
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": 400,
+                  "msg": "未找到支付渠道：999"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "文件过大",
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": 400,
+                  "msg": "单个文件大小不能超过 10MB",
+                  "errors": {
+                    "files.0": ["单个文件大小不能超过 10MB"]
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "服务器错误",
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": 500,
+                  "msg": "导入失败：服务器内部错误"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    },
+    "schemas": {
+      "ImportResult": {
+        "type": "object",
+        "properties": {
+          "total": {
+            "type": "integer",
+            "description": "总文件数"
+          },
+          "created": {
+            "type": "integer",
+            "description": "新建记录数"
+          },
+          "updated": {
+            "type": "integer",
+            "description": "更新记录数"
+          },
+          "skipped": {
+            "type": "integer",
+            "description": "跳过记录数"
+          },
+          "failed": {
+            "type": "integer",
+            "description": "失败记录数"
+          },
+          "imported": {
+            "type": "integer",
+            "description": "已派发导入任务数"
+          },
+          "details": {
+            "type": "array",
+            "description": "详细结果",
+            "items": {
+              "$ref": "#/components/schemas/ImportDetail"
+            }
+          }
+        }
+      },
+      "ImportDetail": {
+        "type": "object",
+        "properties": {
+          "filename": {
+            "type": "string",
+            "description": "文件名"
+          },
+          "date": {
+            "type": "string",
+            "format": "date",
+            "description": "账单日期"
+          },
+          "action": {
+            "type": "string",
+            "enum": ["created", "updated", "skipped", "failed"],
+            "description": "操作类型"
+          },
+          "success": {
+            "type": "boolean",
+            "description": "是否成功"
+          },
+          "message": {
+            "type": "string",
+            "description": "操作消息"
+          },
+          "imported": {
+            "type": "boolean",
+            "description": "是否已派发导入任务(仅在 auto_import=true 时返回)"
+          },
+          "import_error": {
+            "type": "string",
+            "description": "导入任务派发失败的错误信息(仅在派发失败时返回)"
+          }
+        }
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "PaymentBill/LocalBillFileImport",
+      "description": "本地账单文件导入"
+    }
+  ]
+}

@@ -202,6 +202,388 @@
           "404": { "$ref": "#/components/responses/NotFound" }
         }
       }
+    },
+    "/payment-bill/wechat-bills/{wechatBill}/reconciliation/mark-as-matched": {
+      "post": {
+        "tags": ["PaymentBill/WechatBill"],
+        "summary": "标记为已匹配",
+        "description": "将微信账单标记为已匹配状态,表示已与业务订单成功对账\n\n**测试用例:**\n1. 金额完全匹配: business_id=123, amount_diff=0\n2. 金额有差异但可接受: business_id=456, amount_diff=0.01, remark=手续费差异",
+        "operationId": "markWechatBillAsMatched",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "Accept",
+            "in": "header",
+            "required": true,
+            "schema": { "type": "string" },
+            "example": "application/json"
+          },
+          {
+            "name": "wechatBill",
+            "in": "path",
+            "required": true,
+            "description": "微信账单ID",
+            "schema": { "type": "integer" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "examples": {
+                "完全匹配": {
+                  "summary": "金额完全匹配",
+                  "value": {
+                    "business_id": 123,
+                    "amount_diff": 0,
+                    "remark": "订单金额完全一致"
+                  }
+                },
+                "有差异": {
+                  "summary": "金额有差异但可接受",
+                  "value": {
+                    "business_id": 456,
+                    "amount_diff": 0.01,
+                    "remark": "手续费差异"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": 200,
+                  "msg": "success",
+                  "data": {
+                    "id": 1,
+                    "out_trade_no": "ORD202511140001",
+                    "total_fee": "10000",
+                    "reconciliation": {
+                      "status": {
+                        "value": "matched",
+                        "label": "已匹配",
+                        "color": "success",
+                        "icon": "check-circle"
+                      },
+                      "business_type": "App\\Models\\Order",
+                      "business_id": 123,
+                      "reconciled_at": "2026-01-08T14:30:00.000Z",
+                      "amount_diff": "0.00",
+                      "remark": "订单金额完全一致",
+                      "reconciled_by": "user_1"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "422": { "$ref": "#/components/responses/ValidationError" }
+        }
+      }
+    },
+    "/payment-bill/wechat-bills/{wechatBill}/reconciliation/mark-as-mismatched": {
+      "post": {
+        "tags": ["PaymentBill/WechatBill"],
+        "summary": "标记为不匹配",
+        "description": "将微信账单标记为不匹配状态,表示与业务订单对账失败\n\n**测试用例:**\n1. 金额不符: business_id=789, amount_diff=10.00, remark=支付金额与订单金额不符\n2. 订单状态异常: business_id=101, amount_diff=50.00, remark=订单已取消但仍有支付记录",
+        "operationId": "markWechatBillAsMismatched",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "Accept",
+            "in": "header",
+            "required": true,
+            "schema": { "type": "string" },
+            "example": "application/json"
+          },
+          {
+            "name": "wechatBill",
+            "in": "path",
+            "required": true,
+            "description": "微信账单ID",
+            "schema": { "type": "integer" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "examples": {
+                "金额不符": {
+                  "summary": "金额不匹配",
+                  "value": {
+                    "business_id": 789,
+                    "amount_diff": 10.00,
+                    "remark": "支付金额与订单金额不符"
+                  }
+                },
+                "订单状态异常": {
+                  "summary": "订单状态异常",
+                  "value": {
+                    "business_id": 101,
+                    "amount_diff": 50.00,
+                    "remark": "订单已取消但仍有支付记录"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": 200,
+                  "msg": "success",
+                  "data": {
+                    "id": 1,
+                    "out_trade_no": "ORD202511140001",
+                    "total_fee": "10000",
+                    "reconciliation": {
+                      "status": {
+                        "value": "mismatched",
+                        "label": "不匹配",
+                        "color": "danger",
+                        "icon": "times-circle"
+                      },
+                      "business_type": "App\\Models\\Order",
+                      "business_id": 789,
+                      "reconciled_at": "2026-01-08T14:30:00.000Z",
+                      "amount_diff": "10.00",
+                      "remark": "支付金额与订单金额不符",
+                      "reconciled_by": "user_1"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "422": { "$ref": "#/components/responses/ValidationError" }
+        }
+      }
+    },
+    "/payment-bill/wechat-bills/{wechatBill}/reconciliation/mark-as-manual": {
+      "post": {
+        "tags": ["PaymentBill/WechatBill"],
+        "summary": "标记为人工处理",
+        "description": "将微信账单标记为人工处理状态,表示需要人工介入处理\n\n**测试用例:**\n1. 特殊订单: remark=大额订单需人工核实\n2. 异常情况: business_id=202, remark=系统异常导致自动对账失败",
+        "operationId": "markWechatBillAsManual",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "Accept",
+            "in": "header",
+            "required": true,
+            "schema": { "type": "string" },
+            "example": "application/json"
+          },
+          {
+            "name": "wechatBill",
+            "in": "path",
+            "required": true,
+            "description": "微信账单ID",
+            "schema": { "type": "integer" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "examples": {
+                "特殊订单": {
+                  "summary": "特殊订单需人工核实",
+                  "value": {
+                    "remark": "大额订单需人工核实"
+                  }
+                },
+                "异常情况": {
+                  "summary": "系统异常",
+                  "value": {
+                    "business_id": 202,
+                    "remark": "系统异常导致自动对账失败"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": 200,
+                  "msg": "success",
+                  "data": {
+                    "id": 1,
+                    "out_trade_no": "ORD202511140001",
+                    "total_fee": "10000",
+                    "reconciliation": {
+                      "status": {
+                        "value": "manual",
+                        "label": "人工处理",
+                        "color": "warning",
+                        "icon": "hand-paper"
+                      },
+                      "business_type": null,
+                      "business_id": null,
+                      "reconciled_at": "2026-01-08T14:30:00.000Z",
+                      "amount_diff": "0.00",
+                      "remark": "大额订单需人工核实",
+                      "reconciled_by": "user_1"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "422": { "$ref": "#/components/responses/ValidationError" }
+        }
+      }
+    },
+    "/payment-bill/wechat-bills/{wechatBill}/reconciliation/mark-as-ignored": {
+      "post": {
+        "tags": ["PaymentBill/WechatBill"],
+        "summary": "标记为已忽略",
+        "description": "将微信账单标记为已忽略状态,表示该记录不需要对账\n\n**测试用例:**\n1. 测试订单: remark=测试订单,无需对账\n2. 重复记录: remark=重复的支付记录,已忽略",
+        "operationId": "markWechatBillAsIgnored",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "Accept",
+            "in": "header",
+            "required": true,
+            "schema": { "type": "string" },
+            "example": "application/json"
+          },
+          {
+            "name": "wechatBill",
+            "in": "path",
+            "required": true,
+            "description": "微信账单ID",
+            "schema": { "type": "integer" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "examples": {
+                "测试订单": {
+                  "summary": "测试订单",
+                  "value": {
+                    "remark": "测试订单,无需对账"
+                  }
+                },
+                "重复记录": {
+                  "summary": "重复记录",
+                  "value": {
+                    "remark": "重复的支付记录,已忽略"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": 200,
+                  "msg": "success",
+                  "data": {
+                    "id": 1,
+                    "out_trade_no": "ORD202511140001",
+                    "total_fee": "10000",
+                    "reconciliation": {
+                      "status": {
+                        "value": "ignored",
+                        "label": "已忽略",
+                        "color": "info",
+                        "icon": "eye-slash"
+                      },
+                      "business_type": null,
+                      "business_id": null,
+                      "reconciled_at": "2026-01-08T14:30:00.000Z",
+                      "amount_diff": "0.00",
+                      "remark": "测试订单,无需对账",
+                      "reconciled_by": "user_1"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "422": { "$ref": "#/components/responses/ValidationError" }
+        }
+      }
+    },
+    "/payment-bill/wechat-bills/{wechatBill}/reconciliation/mark-as-pending": {
+      "post": {
+        "tags": ["PaymentBill/WechatBill"],
+        "summary": "重置为待对账",
+        "description": "将微信账单重置为待对账状态,清除之前的对账记录\n\n**测试用例:**\n1. 重置对账状态: 无需参数",
+        "operationId": "markWechatBillAsPending",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "Accept",
+            "in": "header",
+            "required": true,
+            "schema": { "type": "string" },
+            "example": "application/json"
+          },
+          {
+            "name": "wechatBill",
+            "in": "path",
+            "required": true,
+            "description": "微信账单ID",
+            "schema": { "type": "integer" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": 200,
+                  "msg": "success",
+                  "data": {
+                    "id": 1,
+                    "out_trade_no": "ORD202511140001",
+                    "total_fee": "10000",
+                    "reconciliation": {
+                      "status": {
+                        "value": "pending",
+                        "label": "待对账",
+                        "color": "default",
+                        "icon": "clock"
+                      },
+                      "business_type": null,
+                      "business_id": null,
+                      "reconciled_at": null,
+                      "amount_diff": "0.00",
+                      "remark": null,
+                      "reconciled_by": null
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -233,6 +615,23 @@
               "code": 404,
               "msg": "资源不存在",
               "data": null
+            }
+          }
+        }
+      },
+      "ValidationError": {
+        "description": "数据校验失败",
+        "content": {
+          "application/json": {
+            "example": {
+              "code": 422,
+              "msg": "数据校验失败",
+              "data": {
+                "errors": {
+                  "business_id": ["业务订单ID不能为空"],
+                  "remark": ["备注不能为空"]
+                }
+              }
             }
           }
         }
