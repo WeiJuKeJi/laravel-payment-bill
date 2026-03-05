@@ -5,8 +5,8 @@ namespace WeiJuKeJi\PaymentBill\Http\Controllers;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
-use WeiJuKeJi\PaymentBill\Http\Requests\ReconciliationRequest;
-use WeiJuKeJi\PaymentBill\Http\Requests\WechatBillFilterRequest;
+use WeiJuKeJi\PaymentBill\Http\Requests\Reconciliation\ReconciliationRequest;
+use WeiJuKeJi\PaymentBill\Http\Requests\WechatBill\WechatBillFilterRequest;
 use WeiJuKeJi\PaymentBill\Http\Resources\WechatBillResource;
 use WeiJuKeJi\PaymentBill\Models\WechatBill;
 

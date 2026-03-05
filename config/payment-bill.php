@@ -90,15 +90,27 @@ return [
         // 账单下载任务配置
         'download' => [
             'enabled' => true,
-            'time' => '02:00', // 每天执行时间（24小时格式）
+            'time' => '09:00', // 每天执行时间（24小时格式）
             'timezone' => null, // null 表示使用 app.timezone 配置
+            'retry' => [
+                'enabled' => true,
+                'every_hours' => 2,  // 重试间隔小时数
+                'days' => 3,         // 往前追溯的天数，重试该范围内所有失败记录
+                'timezone' => null,  // null 表示使用 app.timezone 配置
+            ],
         ],
 
         // 账单导入任务配置
         'import' => [
             'enabled' => true,
-            'time' => '02:30', // 每天执行时间（24小时格式）
+            'time' => '09:30', // 每天执行时间（24小时格式）
             'timezone' => null, // null 表示使用 app.timezone 配置
+            'retry' => [
+                'enabled' => true,
+                'every_hours' => 2,  // 重试间隔小时数
+                'days' => 3,         // 往前追溯的天数，重试该范围内所有失败记录
+                'timezone' => null,  // null 表示使用 app.timezone 配置
+            ],
         ],
     ],
 

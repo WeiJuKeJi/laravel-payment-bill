@@ -3,7 +3,7 @@
 namespace WeiJuKeJi\PaymentBill\Http\Controllers;
 
 use Illuminate\Http\JsonResponse;
-use WeiJuKeJi\PaymentBill\Http\Requests\LocalBillFileImportRequest;
+use WeiJuKeJi\PaymentBill\Http\Requests\LocalBillFileImport\LocalBillFileImportRequest;
 use WeiJuKeJi\PaymentBill\Services\LocalBillFileImportService;
 
 /**

@@ -76,12 +76,22 @@ php artisan vendor:publish --tag=payment-bill-config
   - `enabled` - 是否启用自动定时任务（默认：true）
   - `download` - 账单下载任务配置
     - `enabled` - 是否启用（默认：true）
-    - `time` - 执行时间（默认：02:00）
+    - `time` - 执行时间（默认：09:00）
     - `timezone` - 时区（默认：使用 app.timezone）
+    - `retry` - 下载失败重试配置
+      - `enabled` - 是否启用（默认：true）
+      - `every_hours` - 重试间隔小时数（默认：2）
+      - `days` - 往前追溯的天数（默认：3）
+      - `timezone` - 时区（默认：使用 app.timezone）
   - `import` - 账单导入任务配置
     - `enabled` - 是否启用（默认：true）
-    - `time` - 执行时间（默认：02:30）
+    - `time` - 执行时间（默认：09:30）
     - `timezone` - 时区（默认：使用 app.timezone）
+    - `retry` - 导入失败重试配置
+      - `enabled` - 是否启用（默认：true）
+      - `every_hours` - 重试间隔小时数（默认：2）
+      - `days` - 往前追溯的天数（默认：3）
+      - `timezone` - 时区（默认：使用 app.timezone）
 - `enums` - 枚举类配置
   - `reconciliation_status` - 对账状态枚举类
 - `reconciliation` - 对账配置
@@ -881,10 +891,34 @@ $ php artisan payment-bill:import-local-files --directory=/Users/oran/Downloads/
 
 ### 定时任务
 
-扩展包已自动注册定时任务，无需额外配置。
+扩展包已自动注册定时任务，无需额外配置。共 4 个任务：
 
-- **每天凌晨 2:00** - 自动下载前一天的账单
-- **每天凌晨 2:30** - 自动导入已下载的账单
+| 任务 | 频率 | 说明 |
+|------|------|------|
+| 自动下载 | 每天 09:00 | 下载昨日所有启用渠道的账单 |
+| 自动导入 | 每天 09:30 | 导入昨日已下载的账单到数据库 |
+| 下载失败重试 | 每 2 小时 | 重试近 3 天内下载状态为 failed 的记录 |
+| 导入失败重试 | 每 2 小时 | 重试近 3 天内导入状态为 failed 的记录 |
+
+重试任务的追溯天数和间隔可通过配置文件调整：
+
+```php
+// config/payment-bill.php
+'schedules' => [
+    'download' => [
+        'retry' => [
+            'every_hours' => 2, // 重试间隔
+            'days' => 7,        // 改为追溯 7 天
+        ],
+    ],
+    'import' => [
+        'retry' => [
+            'every_hours' => 2,
+            'days' => 7,
+        ],
+    ],
+],
+```
 
 确保在 `crontab` 中添加 Laravel 调度器：
 
@@ -1010,11 +1044,19 @@ $ php artisan payment-bill:import-local-files --directory=/Users/oran/Downloads/
         'enabled' => true,
         'time' => '03:00', // 改为凌晨3点执行
         'timezone' => 'Asia/Shanghai',
+        'retry' => [
+            'enabled' => true,
+            'every_hours' => 4,
+            'days' => 7,
+        ],
     ],
     'import' => [
         'enabled' => false, // 禁用自动导入，仅手动触发
         'time' => '03:30',
-        'timezone' => null, // 使用 app.timezone 配置
+        'timezone' => null,
+        'retry' => [
+            'enabled' => false,
+        ],
     ],
 ],
 ```

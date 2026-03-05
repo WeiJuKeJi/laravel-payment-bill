@@ -80,7 +80,7 @@ class PaymentBillServiceProvider extends ServiceProvider
         $this->callAfterResolving(Schedule::class, static function (Schedule $schedule): void {
             // 注册账单下载定时任务
             if (config('payment-bill.schedules.download.enabled', true)) {
-                $downloadTime = config('payment-bill.schedules.download.time', '02:00');
+                $downloadTime = config('payment-bill.schedules.download.time', '09:00');
                 $downloadTimezone = config('payment-bill.schedules.download.timezone')
                     ?? config('app.timezone', 'Asia/Shanghai');
 
@@ -94,7 +94,7 @@ class PaymentBillServiceProvider extends ServiceProvider
 
             // 注册账单导入定时任务
             if (config('payment-bill.schedules.import.enabled', true)) {
-                $importTime = config('payment-bill.schedules.import.time', '02:30');
+                $importTime = config('payment-bill.schedules.import.time', '09:30');
                 $importTimezone = config('payment-bill.schedules.import.timezone')
                     ?? config('app.timezone', 'Asia/Shanghai');
 
@@ -104,6 +104,39 @@ class PaymentBillServiceProvider extends ServiceProvider
                     ->withoutOverlapping()
                     ->runInBackground()
                     ->monitorName('支付账单-自动导入');
+
+                $importRetryDays = max(1, (int) config('payment-bill.schedules.import.retry.days', 3));
+                $importRetryFrom = now()->subDays($importRetryDays - 1)->toDateString();
+                $importRetryTo = now()->subDay()->toDateString();
+                $importRetryEveryHours = (int) config('payment-bill.schedules.import.retry.every_hours', 2);
+                $importRetryTimezone = config('payment-bill.schedules.import.retry.timezone')
+                    ?? config('app.timezone', 'Asia/Shanghai');
+
+                if (config('payment-bill.schedules.import.retry.enabled', true)) {
+                    $schedule->command("payment-bill:import --only-failed --from={$importRetryFrom} --to={$importRetryTo}")
+                        ->cron('0 */'.$importRetryEveryHours.' * * *')
+                        ->timezone($importRetryTimezone)
+                        ->withoutOverlapping()
+                        ->runInBackground()
+                        ->monitorName('支付账单-导入失败重试');
+                }
+            }
+
+            if (config('payment-bill.schedules.download.retry.enabled', true)) {
+                $retryEveryHours = (int) config('payment-bill.schedules.download.retry.every_hours', 2);
+                $retryTimezone = config('payment-bill.schedules.download.retry.timezone')
+                    ?? config('app.timezone', 'Asia/Shanghai');
+
+                $retryDays = max(1, (int) config('payment-bill.schedules.download.retry.days', 3));
+                $retryFrom = now()->subDays($retryDays - 1)->toDateString();
+                $retryTo = now()->subDay()->toDateString();
+
+                $schedule->command("payment-bill:download --retry-failed --from={$retryFrom} --to={$retryTo}")
+                    ->cron('0 */'.$retryEveryHours.' * * *')
+                    ->timezone($retryTimezone)
+                    ->withoutOverlapping()
+                    ->runInBackground()
+                    ->monitorName('支付账单-下载失败重试');
             }
         });
     }

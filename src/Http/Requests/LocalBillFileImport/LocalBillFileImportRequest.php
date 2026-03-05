@@ -1,6 +1,6 @@
 <?php
 
-namespace WeiJuKeJi\PaymentBill\Http\Requests;
+namespace WeiJuKeJi\PaymentBill\Http\Requests\LocalBillFileImport;
 
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;

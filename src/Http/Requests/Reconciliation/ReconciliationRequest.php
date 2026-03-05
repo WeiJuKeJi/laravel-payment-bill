@@ -1,6 +1,6 @@
 <?php
 
-namespace WeiJuKeJi\PaymentBill\Http\Requests;
+namespace WeiJuKeJi\PaymentBill\Http\Requests\Reconciliation;
 
 use Illuminate\Foundation\Http\FormRequest;
 use WeiJuKeJi\PaymentBill\Enums\ReconciliationStatusEnum;

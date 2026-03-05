@@ -1,6 +1,6 @@
 <?php
 
-namespace WeiJuKeJi\PaymentBill\Http\Requests;
+namespace WeiJuKeJi\PaymentBill\Http\Requests\BillDownload;
 
 use Illuminate\Foundation\Http\FormRequest;
 

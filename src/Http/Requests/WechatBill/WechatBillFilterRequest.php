@@ -1,10 +1,10 @@
 <?php
 
-namespace WeiJuKeJi\PaymentBill\Http\Requests;
+namespace WeiJuKeJi\PaymentBill\Http\Requests\WechatBill;
 
 use Illuminate\Foundation\Http\FormRequest;
 
-class AlipayBillFilterRequest extends FormRequest
+class WechatBillFilterRequest extends FormRequest
 {
     public function authorize(): bool
     {
@@ -18,14 +18,15 @@ class AlipayBillFilterRequest extends FormRequest
     {
         return [
             'payment_channel_id' => ['sometimes', 'nullable'],
-            'bill_date' => ['sometimes', 'nullable', 'date_format:Y-m-d'],
+            'trade_date' => ['sometimes', 'nullable', 'date_format:Y-m-d'],
             'date_between' => ['sometimes', 'array', 'size:2'],
             'date_between.*' => ['nullable', 'date_format:Y-m-d'],
             'date_from' => ['sometimes', 'nullable', 'date_format:Y-m-d'],
             'date_to' => ['sometimes', 'nullable', 'date_format:Y-m-d'],
-            'biz_type' => ['sometimes', 'nullable'],
-            'alipay_trade_no' => ['sometimes', 'nullable', 'string'],
-            'merchant_order_no' => ['sometimes', 'nullable', 'string'],
+            'trade_type' => ['sometimes', 'nullable'],
+            'trade_state' => ['sometimes', 'nullable'],
+            'wechat_transaction_id' => ['sometimes', 'nullable', 'string'],
+            'out_trade_no' => ['sometimes', 'nullable', 'string'],
             'keywords' => ['sometimes', 'nullable', 'string'],
             'order' => ['sometimes', 'nullable', 'in:asc,desc'],
             'per_page' => ['sometimes', 'nullable', 'integer', 'min:1', 'max:500'],
@@ -39,12 +40,13 @@ class AlipayBillFilterRequest extends FormRequest
 
         $nullableFields = [
             'payment_channel_id',
-            'bill_date',
+            'trade_date',
             'date_from',
             'date_to',
-            'biz_type',
-            'alipay_trade_no',
-            'merchant_order_no',
+            'trade_type',
+            'trade_state',
+            'wechat_transaction_id',
+            'out_trade_no',
             'keywords',
             'order',
             'per_page',
