@@ -27,12 +27,29 @@ class WechatBillController extends Controller
             $query->with('paymentChannel');
         }
 
+        $summaryData = (clone $query)->selectRaw('
+            COALESCE(SUM(total_amount), 0) as total_payment_amount,
+            COALESCE(SUM(refund_amount), 0) as total_refund_amount,
+            COALESCE(SUM(fee_amount), 0) as total_fee_amount
+        ')->first();
+
+        $totalPaymentAmount = (float) ($summaryData->total_payment_amount ?? 0);
+        $totalRefundAmount = (float) ($summaryData->total_refund_amount ?? 0);
+        $totalSettlementAmount = $totalPaymentAmount - $totalRefundAmount;
+
+        $summary = [
+            'total_payment_amount' => number_format($totalPaymentAmount, 2, '.', ''),
+            'total_refund_amount' => number_format($totalRefundAmount, 2, '.', ''),
+            'total_settlement_amount' => number_format($totalSettlementAmount, 2, '.', ''),
+            'total_fee_amount' => number_format((float) ($summaryData->total_fee_amount ?? 0), 2, '.', ''),
+        ];
+
         $query->orderBy('trade_time', $direction)
             ->orderBy('id', $direction);
 
         $paginator = $query->paginate($perPage);
 
-        return $this->respondWithPagination($paginator, WechatBillResource::class);
+        return $this->respondWithPaginationAndSummary($paginator, $summary, WechatBillResource::class);
     }
 
     public function show(Request $request, WechatBill $wechatBill): JsonResponse

@@ -4,11 +4,14 @@ namespace WeiJuKeJi\PaymentBill\Http\Controllers;
 
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Storage;
+use WeiJuKeJi\PaymentBill\Http\Requests\BillDownload\BillDownloadCalendarRequest;
 use WeiJuKeJi\PaymentBill\Http\Requests\BillDownload\BillDownloadFilterRequest;
 use WeiJuKeJi\PaymentBill\Http\Requests\BillDownload\BillDownloadStoreRequest;
 use WeiJuKeJi\PaymentBill\Http\Resources\BillDownloadResource;
 use WeiJuKeJi\PaymentBill\Models\BillDownload;
+use WeiJuKeJi\PaymentBill\Models\PaymentChannel;
 use WeiJuKeJi\PaymentBill\Services\BillDownloadService;
 use WeiJuKeJi\PaymentBill\Services\BillImportService;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -46,6 +49,47 @@ class BillDownloadController extends Controller
         return $this->respondWithPagination($paginator, BillDownloadResource::class);
     }
 
+    /**
+     * 按支付渠道和年份输出账单下载日历。
+     */
+    public function calendar(BillDownloadCalendarRequest $request): JsonResponse
+    {
+        $data = $request->validated();
+        $year = (int) $data['year'];
+        $paymentChannelId = (int) $data['payment_channel_id'];
+        $startDate = sprintf('%d-01-01', $year);
+        $endDate = sprintf('%d-12-31', $year);
+
+        $query = BillDownload::query()
+            ->with('paymentChannel')
+            ->where('payment_channel_id', $paymentChannelId)
+            ->whereBetween('bill_date', [$startDate, $endDate])
+            ->orderBy('bill_date')
+            ->orderBy('id');
+
+        if (! empty($data['bill_type'])) {
+            $query->where('bill_type', strtoupper($data['bill_type']));
+        }
+
+        $records = $query->get();
+        $days = $this->buildCalendarDays($records);
+        $channel = PaymentChannel::query()->find($paymentChannelId);
+
+        return $this->success([
+            'year' => $year,
+            'payment_channel_id' => $paymentChannelId,
+            'channel' => $channel ? [
+                'id' => $channel->id,
+                'name' => $channel->name,
+                'channel' => $channel->channel,
+                'mode' => $channel->mode,
+            ] : null,
+            'stats' => $this->buildCalendarStats($days, $year),
+            'monthly_totals' => $this->buildMonthlyTotals($records),
+            'days' => $days,
+        ]);
+    }
+
     public function store(BillDownloadStoreRequest $request): JsonResponse
     {
         $data = $request->validated();
@@ -64,6 +108,152 @@ class BillDownloadController extends Controller
         );
 
         return $this->respondWithResource($record, BillDownloadResource::class, 'created', 200);
+    }
+
+    /**
+     * @param  Collection<int, BillDownload>  $records
+     * @return array<string, mixed>
+     */
+    protected function buildCalendarDays(Collection $records): array
+    {
+        return $records
+            ->groupBy(fn (BillDownload $record) => $record->bill_date?->toDateString())
+            ->filter(fn (Collection $records, ?string $date) => ! empty($date))
+            ->map(function (Collection $dateRecords) {
+                $record = $this->pickCalendarRecord($dateRecords);
+                $payload = BillDownloadResource::make($record)->toArray(request());
+
+                if ($dateRecords->count() > 1) {
+                    $payload['records'] = $dateRecords
+                        ->values()
+                        ->map(fn (BillDownload $item) => BillDownloadResource::make($item)->toArray(request()))
+                        ->all();
+                }
+
+                return $payload;
+            })
+            ->all();
+    }
+
+    /**
+     * @param  Collection<int, BillDownload>  $records
+     */
+    protected function pickCalendarRecord(Collection $records): BillDownload
+    {
+        $priority = [
+            BillDownload::DOWNLOAD_STATUS_FAILED => 0,
+            BillDownload::DOWNLOAD_STATUS_PROCESSING => 1,
+            BillDownload::DOWNLOAD_STATUS_PENDING => 2,
+            BillDownload::DOWNLOAD_STATUS_COMPLETED => 3,
+        ];
+
+        return $records
+            ->sortBy(fn (BillDownload $record) => $priority[$record->download_status] ?? 99)
+            ->first();
+    }
+
+    /**
+     * @param  array<string, mixed>  $days
+     * @return array<string, int>
+     */
+    protected function buildCalendarStats(array $days, int $year): array
+    {
+        $stats = [
+            BillDownload::DOWNLOAD_STATUS_COMPLETED => 0,
+            BillDownload::DOWNLOAD_STATUS_FAILED => 0,
+            BillDownload::DOWNLOAD_STATUS_PROCESSING => 0,
+            BillDownload::DOWNLOAD_STATUS_PENDING => 0,
+            'missing' => 0,
+        ];
+
+        foreach ($days as $day) {
+            $status = $day['download_status'] ?? null;
+
+            if ($status && array_key_exists($status, $stats)) {
+                $stats[$status]++;
+            }
+        }
+
+        $stats['missing'] = max($this->daysInYear($year) - count($days), 0);
+
+        return $stats;
+    }
+
+    /**
+     * @param  Collection<int, BillDownload>  $records
+     * @return array<string, array<string, string>>
+     */
+    protected function buildMonthlyTotals(Collection $records): array
+    {
+        $totals = [];
+
+        for ($month = 1; $month <= 12; $month++) {
+            $monthKey = sprintf('%02d', $month);
+            $totals[$monthKey] = $this->emptyAmountTotals();
+        }
+
+        foreach ($records as $record) {
+            if (! $record->bill_date) {
+                continue;
+            }
+
+            $monthKey = $record->bill_date->format('m');
+            $totals[$monthKey]['order_amount'] = $this->addAmount(
+                $totals[$monthKey]['order_amount'],
+                $record->bill_summary_order_amount
+            );
+            $totals[$monthKey]['refund_amount'] = $this->addAmount(
+                $totals[$monthKey]['refund_amount'],
+                $record->bill_summary_refund_amount
+            );
+            $totals[$monthKey]['fee_amount'] = $this->addAmount(
+                $totals[$monthKey]['fee_amount'],
+                $record->bill_summary_fee_amount
+            );
+        }
+
+        foreach ($totals as &$monthTotals) {
+            $monthTotals['settlement_amount'] = bcsub(
+                $monthTotals['order_amount'],
+                $monthTotals['refund_amount'],
+                2
+            );
+        }
+        unset($monthTotals);
+
+        return $totals;
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    protected function emptyAmountTotals(): array
+    {
+        return [
+            'order_amount' => '0.00',
+            'refund_amount' => '0.00',
+            'settlement_amount' => '0.00',
+            'fee_amount' => '0.00',
+        ];
+    }
+
+    protected function addAmount(string $left, mixed $right): string
+    {
+        return bcadd($left, $this->normalizeAmount($right), 2);
+    }
+
+    protected function normalizeAmount(mixed $value): string
+    {
+        if ($value === null || $value === '') {
+            return '0.00';
+        }
+
+        return number_format((float) $value, 2, '.', '');
+    }
+
+    protected function daysInYear(int $year): int
+    {
+        return checkdate(2, 29, $year) ? 366 : 365;
     }
 
     public function show(BillDownload $billDownload): JsonResponse

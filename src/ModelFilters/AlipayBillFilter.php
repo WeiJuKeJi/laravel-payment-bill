@@ -21,7 +21,7 @@ class AlipayBillFilter extends ModelFilter
      *
      * @param  mixed  $channelIds
      */
-    public function paymentChannelId($channelIds): self
+    public function paymentChannel($channelIds): self
     {
         $ids = array_filter(Arr::wrap($channelIds));
 

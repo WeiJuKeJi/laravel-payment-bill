@@ -79,6 +79,39 @@ trait RespondsWithApi
         return $this->getApiResponseClass()::listResponse($collection, $paginator->total(), $msg, $code);
     }
 
+    protected function respondWithPaginationAndSummary(
+        LengthAwarePaginatorContract $paginator,
+        array $summary,
+        ?string $resourceClass = null,
+        string $msg = 'success',
+        int $code = 200
+    ): JsonResponse {
+        $collection = $paginator->getCollection();
+
+        if ($resourceClass) {
+            /** @var JsonResource $resourceClass */
+            $collection = $collection->map(fn ($item) => $resourceClass::make($item)->toArray(request()))->all();
+        } else {
+            $collection = $collection->values()->map(function ($item) {
+                if ($item instanceof JsonResource) {
+                    return $item->toArray(request());
+                }
+
+                if ($item instanceof Arrayable) {
+                    return $item->toArray();
+                }
+
+                if ($item instanceof Model) {
+                    return $item->toArray();
+                }
+
+                return $item;
+            })->all();
+        }
+
+        return $this->getApiResponseClass()::listResponseWithSummary($collection, $paginator->total(), $summary, $msg, $code);
+    }
+
     protected function respondWithResource(
         Model $model,
         string $resourceClass,

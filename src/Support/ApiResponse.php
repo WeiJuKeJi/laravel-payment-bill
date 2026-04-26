@@ -61,6 +61,34 @@ class ApiResponse
     }
 
     /**
+     * 构建带列表和汇总统计的响应。
+     */
+    public static function listResponseWithSummary(
+        iterable $list,
+        int $total,
+        array $summary,
+        string $msg = 'success',
+        int $code = 200,
+        int $status = 200
+    ): JsonResponse {
+        if ($list instanceof \Illuminate\Support\Collection) {
+            $list = $list->values()->all();
+        } elseif ($list instanceof \Traversable) {
+            $list = iterator_to_array($list, false);
+        } elseif (! is_array($list)) {
+            $list = Arr::wrap($list);
+        }
+
+        $list = array_values($list);
+
+        return self::success([
+            'list' => $list,
+            'total' => $total,
+            'summary' => $summary,
+        ], $msg, $code, $status);
+    }
+
+    /**
      * 基于分页器构建列表响应，可传入转换器处理单条数据。
      */
     public static function paginate(

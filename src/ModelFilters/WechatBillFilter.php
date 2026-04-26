@@ -21,7 +21,7 @@ class WechatBillFilter extends ModelFilter
      *
      * @param  mixed  $channelIds
      */
-    public function paymentChannelId($channelIds): self
+    public function paymentChannel($channelIds): self
     {
         $ids = array_filter(Arr::wrap($channelIds));
 
@@ -112,6 +112,30 @@ class WechatBillFilter extends ModelFilter
     }
 
     /**
+     * 按页面交易类型过滤（支付/退款）。
+     *
+     * @param  mixed  $kinds
+     */
+    public function transactionKind($kinds): self
+    {
+        $values = array_values(array_unique(array_filter(array_map('strtolower', Arr::wrap($kinds)))));
+
+        if (empty($values) || count($values) > 1) {
+            return $this;
+        }
+
+        if ($values[0] === 'refund') {
+            return $this->where('trade_state', 'REFUND');
+        }
+
+        if ($values[0] === 'payment') {
+            return $this->where('trade_state', 'SUCCESS');
+        }
+
+        return $this;
+    }
+
+    /**
      * 按交易状态过滤。
      *
      * @param  mixed  $states
@@ -125,6 +149,22 @@ class WechatBillFilter extends ModelFilter
         }
 
         return $this->whereIn('trade_state', $values);
+    }
+
+    /**
+     * 按对账状态过滤。
+     *
+     * @param  mixed  $statuses
+     */
+    public function reconciliationStatus($statuses): self
+    {
+        $values = array_filter(array_map('strtolower', Arr::wrap($statuses)));
+
+        if (empty($values)) {
+            return $this;
+        }
+
+        return $this->whereIn('reconciliation_status', $values);
     }
 
     /**

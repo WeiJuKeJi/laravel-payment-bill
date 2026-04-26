@@ -23,6 +23,16 @@ class BillDownloadFilter extends ModelFilter
      *
      * @param  mixed  $channelIds
      */
+    public function paymentChannel($channelIds): self
+    {
+        return $this->paymentChannelId($channelIds);
+    }
+
+    /**
+     * 按支付渠道筛选，支持数组/逗号分隔。
+     *
+     * @param  mixed  $channelIds
+     */
     public function paymentChannelId($channelIds): self
     {
         $ids = array_filter(Arr::wrap($channelIds));
