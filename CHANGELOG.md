@@ -4,6 +4,17 @@ All notable changes to `laravel-payment-bill` will be documented in this file.
 
 ## [Unreleased]
 
+## [1.1.3] - 2026-04-26
+
+### Added
+- 新增账单下载日历接口，支持按支付渠道、年份和账单类型聚合日历数据与月度汇总
+- 新增微信账单列表汇总统计，返回支付、退款、结算和手续费合计
+
+### Changed
+- 微信账单筛选新增 `transaction_kind` 和 `reconciliation_status`
+- 调整账单与微信账单 Filter 的支付渠道方法命名，兼容规范化筛选参数
+- 扩展 API 响应结构，支持分页列表同时返回 summary 汇总数据
+
 ## [1.1.1] - 2026-03-05
 
 ### Added
