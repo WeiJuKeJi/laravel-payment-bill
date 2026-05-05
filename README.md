@@ -17,7 +17,7 @@ Laravel 支付账单管理扩展包，支持微信支付、支付宝账单自动
 - ✅ 完整的错误处理与重试机制
 - ✅ 集成 laravel-enum-options，前端友好的枚举支持
 - ✅ 基于 yansongda/pay 3.x
-- ✅ 支持 Laravel 10.x、11.x、12.x
+- ✅ 支持 Laravel 10.x、11.x、12.x、13.x
 
 ## 安装
 
@@ -1064,7 +1064,7 @@ $ php artisan payment-bill:import-local-files --directory=/Users/oran/Downloads/
 ## 依赖
 
 - PHP ^8.1
-- Laravel ^10.0|^11.0|^12.0
+- Laravel ^10.0|^11.0|^12.0|^13.0
 - yansongda/pay ^3.0
 - tucker-eric/eloquentfilter ^3.0
 - weijukeji/laravel-enum-options ^1.0 (对账功能)

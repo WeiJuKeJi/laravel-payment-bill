@@ -4,6 +4,12 @@ All notable changes to `laravel-payment-bill` will be documented in this file.
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-05-05
+
+### Changed
+- 新增 Laravel 13 依赖约束支持。
+- 扩展 Testbench 与 PHPUnit 开发依赖矩阵以覆盖 Laravel 13。
+
 ## [1.1.3] - 2026-04-26
 
 ### Added
@@ -50,4 +56,4 @@ All notable changes to `laravel-payment-bill` will be documented in this file.
 - 自动定时任务（每天凌晨 2:00 下载，2:30 导入）
 - 完整的错误处理与重试机制
 - 基于 yansongda/pay 3.x 实现
-- 支持 Laravel 10.x、11.x、12.x
+- 支持 Laravel 10.x、11.x、12.x、13.x
