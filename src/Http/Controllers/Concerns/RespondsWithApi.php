@@ -7,11 +7,15 @@ use Illuminate\Contracts\Support\Arrayable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Support\Collection;
+use Traversable;
 
 /**
  * 为控制器提供统一的 API 响应方法。
  *
  * 优先使用主项目的 ApiResponse（如果存在），否则使用包内的实现。
+ * 宿主项目的 ApiResponse 仅需实现 success() 与 error() 两个静态方法；
+ * 列表 / 分页 / 汇总等结构化 payload 由本 trait 自行拼装，避免与宿主类签名耦合。
  */
 trait RespondsWithApi
 {
@@ -44,7 +48,10 @@ trait RespondsWithApi
         int $code = 200,
         int $status = 200
     ): JsonResponse {
-        return $this->getApiResponseClass()::listResponse($list, $total, $msg, $code, $status);
+        return $this->success([
+            'list' => $this->normalizeIterableList($list),
+            'total' => $total,
+        ], $msg, $code, $status);
     }
 
     protected function respondWithPagination(
@@ -53,30 +60,10 @@ trait RespondsWithApi
         string $msg = 'success',
         int $code = 200
     ): JsonResponse {
-        $collection = $paginator->getCollection();
-
-        if ($resourceClass) {
-            /** @var JsonResource $resourceClass */
-            $collection = $collection->map(fn ($item) => $resourceClass::make($item)->toArray(request()))->all();
-        } else {
-            $collection = $collection->values()->map(function ($item) {
-                if ($item instanceof JsonResource) {
-                    return $item->toArray(request());
-                }
-
-                if ($item instanceof Arrayable) {
-                    return $item->toArray();
-                }
-
-                if ($item instanceof Model) {
-                    return $item->toArray();
-                }
-
-                return $item;
-            })->all();
-        }
-
-        return $this->getApiResponseClass()::listResponse($collection, $paginator->total(), $msg, $code);
+        return $this->success([
+            'list' => $this->transformPaginatorCollection($paginator, $resourceClass),
+            'total' => $paginator->total(),
+        ], $msg, $code);
     }
 
     protected function respondWithPaginationAndSummary(
@@ -86,30 +73,11 @@ trait RespondsWithApi
         string $msg = 'success',
         int $code = 200
     ): JsonResponse {
-        $collection = $paginator->getCollection();
-
-        if ($resourceClass) {
-            /** @var JsonResource $resourceClass */
-            $collection = $collection->map(fn ($item) => $resourceClass::make($item)->toArray(request()))->all();
-        } else {
-            $collection = $collection->values()->map(function ($item) {
-                if ($item instanceof JsonResource) {
-                    return $item->toArray(request());
-                }
-
-                if ($item instanceof Arrayable) {
-                    return $item->toArray();
-                }
-
-                if ($item instanceof Model) {
-                    return $item->toArray();
-                }
-
-                return $item;
-            })->all();
-        }
-
-        return $this->getApiResponseClass()::listResponseWithSummary($collection, $paginator->total(), $summary, $msg, $code);
+        return $this->success([
+            'list' => $this->transformPaginatorCollection($paginator, $resourceClass),
+            'total' => $paginator->total(),
+            'summary' => $summary,
+        ], $msg, $code);
     }
 
     protected function respondWithResource(
@@ -144,5 +112,55 @@ trait RespondsWithApi
         unset($filters['per_page'], $filters['page']);
 
         return max(1, min($max, $perPage));
+    }
+
+    /**
+     * 将分页器内的集合转换为可直接 JSON 序列化的数组。
+     */
+    private function transformPaginatorCollection(
+        LengthAwarePaginatorContract $paginator,
+        ?string $resourceClass
+    ): array {
+        $collection = $paginator->getCollection();
+
+        if ($resourceClass) {
+            /** @var JsonResource $resourceClass */
+            return $collection
+                ->map(fn ($item) => $resourceClass::make($item)->toArray(request()))
+                ->values()
+                ->all();
+        }
+
+        return $collection->values()->map(function ($item) {
+            if ($item instanceof JsonResource) {
+                return $item->toArray(request());
+            }
+
+            if ($item instanceof Arrayable) {
+                return $item->toArray();
+            }
+
+            if ($item instanceof Model) {
+                return $item->toArray();
+            }
+
+            return $item;
+        })->all();
+    }
+
+    /**
+     * 将任意 iterable 规整为数组（与原 ApiResponse::listResponse 行为保持一致）。
+     */
+    private function normalizeIterableList(iterable $list): array
+    {
+        if ($list instanceof Collection) {
+            return $list->values()->all();
+        }
+
+        if ($list instanceof Traversable) {
+            return array_values(iterator_to_array($list, false));
+        }
+
+        return array_values((array) $list);
     }
 }

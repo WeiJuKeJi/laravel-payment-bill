@@ -100,6 +100,7 @@ class AlipayBillImporter
 
         try {
             $this->importDetails($detailFile);
+            $this->parseDetailTrailerForRefund($detailFile);
 
             if ($summaryFile !== null) {
                 $this->importSummary($summaryFile);
@@ -280,6 +281,38 @@ class AlipayBillImporter
         }
     }
 
+    /**
+     * 业务汇总 CSV 缺少退款金额列，从业务明细尾部注释行解析。
+     * 形如：#退款合计：2笔，商家实收退款共-310.00元，商家优惠退款共0.00元
+     */
+    private function parseDetailTrailerForRefund(string $csvPath): void
+    {
+        $handle = fopen($csvPath, 'rb');
+        if ($handle === false) {
+            return;
+        }
+
+        try {
+            while (($line = fgets($handle)) !== false) {
+                $decoded = $this->normalizeValue($line);
+                if ($decoded === null || $decoded === '' || ! str_contains($decoded, '退款合计')) {
+                    continue;
+                }
+
+                if (preg_match('/退款合计[^共]*共\s*(-?[\d,]+(?:\.\d+)?)\s*元/u', $decoded, $matches)) {
+                    $amount = str_replace(',', '', $matches[1]);
+                    $amount = ltrim($amount, '+');
+                    $amount = ltrim($amount, '-');
+                    $this->summaryStats['bill_summary_refund_amount'] = $this->formatAmount($amount);
+
+                    return;
+                }
+            }
+        } finally {
+            fclose($handle);
+        }
+    }
+
     private function importSummary(?string $csvPath): void
     {
         if ($csvPath === null) {
@@ -302,7 +335,7 @@ class AlipayBillImporter
                     continue;
                 }
 
-                $normalizedLine = str_replace("\t", ',', $decoded);
+                $normalizedLine = str_replace("\t", '', $decoded);
                 $columns = str_getcsv($normalizedLine);
 
                 if (empty($columns) || str_contains($columns[0], '门店编号')) {
@@ -325,7 +358,7 @@ class AlipayBillImporter
         }
 
         if ($columns[0] !== null && str_contains($columns[0], '合计')) {
-            $transactionCount = $this->toInteger($columns[2] ?? null);
+            $transactionCount = $this->toInteger($columns[2] ?? null) + $this->toInteger($columns[3] ?? null);
             $orderAmount = $this->formatAmount($columns[4] ?? null);
             $settlementAmount = $this->formatAmount($columns[5] ?? null);
             $serviceFee = $this->formatAmount($columns[9] ?? null);
@@ -339,7 +372,7 @@ class AlipayBillImporter
         }
 
         // 若没有合计行，则累加每行
-        $this->summaryStats['bill_summary_transaction_count'] += $this->toInteger($columns[2] ?? null);
+        $this->summaryStats['bill_summary_transaction_count'] += $this->toInteger($columns[2] ?? null) + $this->toInteger($columns[3] ?? null);
         $this->summaryStats['bill_summary_order_amount'] = $this->bcAdd(
             $this->summaryStats['bill_summary_order_amount'],
             $this->formatAmount($columns[4] ?? null)

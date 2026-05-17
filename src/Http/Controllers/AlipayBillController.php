@@ -27,13 +27,27 @@ class AlipayBillController extends Controller
             $query->with('paymentChannel');
         }
 
-        $query->orderBy('bill_date', $direction)
-            ->orderBy('created_time', $direction)
+        // 业务明细中 biz_type='交易' 为支付，biz_type='退款' 为退款（退款行 order_amount 为负值）。
+        $summaryData = (clone $query)->selectRaw("
+            COALESCE(SUM(CASE WHEN biz_type = '交易' THEN order_amount ELSE 0 END), 0) as total_payment_amount,
+            COALESCE(SUM(CASE WHEN biz_type = '退款' THEN -order_amount ELSE 0 END), 0) as total_refund_amount,
+            COALESCE(SUM(merchant_settlement_amount), 0) as total_settlement_amount,
+            COALESCE(SUM(service_fee_amount), 0) as total_fee_amount
+        ")->first();
+
+        $summary = [
+            'total_payment_amount' => number_format((float) ($summaryData->total_payment_amount ?? 0), 2, '.', ''),
+            'total_refund_amount' => number_format((float) ($summaryData->total_refund_amount ?? 0), 2, '.', ''),
+            'total_settlement_amount' => number_format((float) ($summaryData->total_settlement_amount ?? 0), 2, '.', ''),
+            'total_fee_amount' => number_format((float) ($summaryData->total_fee_amount ?? 0), 2, '.', ''),
+        ];
+
+        $query->orderBy('completed_time', $direction)
             ->orderBy('id', $direction);
 
         $paginator = $query->paginate($perPage);
 
-        return $this->respondWithPagination($paginator, AlipayBillResource::class);
+        return $this->respondWithPaginationAndSummary($paginator, $summary, AlipayBillResource::class);
     }
 
     public function show(Request $request, AlipayBill $alipayBill): JsonResponse

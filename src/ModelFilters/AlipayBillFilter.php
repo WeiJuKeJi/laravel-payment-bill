@@ -96,19 +96,62 @@ class AlipayBillFilter extends ModelFilter
     }
 
     /**
-     * 按业务类型筛选。
+     * 按业务类型筛选。支付宝业务明细中 biz_type 为中文（交易/退款），保持原值匹配。
      *
      * @param  mixed  $types
      */
     public function bizType($types): self
     {
-        $values = array_filter(array_map('strtoupper', Arr::wrap($types)));
+        $values = array_values(array_filter(array_map(
+            static fn ($value) => is_string($value) ? trim($value) : $value,
+            Arr::wrap($types)
+        )));
 
         if (empty($values)) {
             return $this;
         }
 
         return $this->whereIn('biz_type', $values);
+    }
+
+    /**
+     * 按页面交易类型过滤（payment→交易, refund→退款）。
+     *
+     * @param  mixed  $kinds
+     */
+    public function transactionKind($kinds): self
+    {
+        $values = array_values(array_unique(array_filter(array_map('strtolower', Arr::wrap($kinds)))));
+
+        if (empty($values) || count($values) > 1) {
+            return $this;
+        }
+
+        if ($values[0] === 'refund') {
+            return $this->where('biz_type', '退款');
+        }
+
+        if ($values[0] === 'payment') {
+            return $this->where('biz_type', '交易');
+        }
+
+        return $this;
+    }
+
+    /**
+     * 按对账状态过滤。
+     *
+     * @param  mixed  $statuses
+     */
+    public function reconciliationStatus($statuses): self
+    {
+        $values = array_filter(array_map('strtolower', Arr::wrap($statuses)));
+
+        if (empty($values)) {
+            return $this;
+        }
+
+        return $this->whereIn('reconciliation_status', $values);
     }
 
     /**
