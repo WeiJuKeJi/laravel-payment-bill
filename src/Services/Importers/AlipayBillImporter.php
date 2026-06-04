@@ -361,7 +361,8 @@ class AlipayBillImporter
             $transactionCount = $this->toInteger($columns[2] ?? null) + $this->toInteger($columns[3] ?? null);
             $orderAmount = $this->formatAmount($columns[4] ?? null);
             $settlementAmount = $this->formatAmount($columns[5] ?? null);
-            $serviceFee = $this->formatAmount($columns[9] ?? null);
+            // 与明细一致：取反使服务费汇总为正（支出口径），与微信手续费总额保持一致。
+            $serviceFee = $this->negateAmount($this->formatAmount($columns[9] ?? null));
 
             $this->summaryStats['bill_summary_transaction_count'] = $transactionCount;
             $this->summaryStats['bill_summary_order_amount'] = $orderAmount;
@@ -383,7 +384,7 @@ class AlipayBillImporter
         );
         $this->summaryStats['bill_summary_fee_amount'] = $this->bcAdd(
             $this->summaryStats['bill_summary_fee_amount'],
-            $this->formatAmount($columns[9] ?? null)
+            $this->negateAmount($this->formatAmount($columns[9] ?? null))
         );
     }
 
@@ -536,6 +537,13 @@ class AlipayBillImporter
             $index = $headerMap[$header] ?? null;
             $value = $index !== null ? ($row[$index] ?? null) : null;
 
+            if ($attribute === 'service_fee_amount') {
+                // 支付宝原始服务费：支付为负、退款为正，与微信手续费符号正好相反。
+                // 取反统一为「支付为正、退款为负」，与微信账单 fee_amount 保持一致。
+                $data[$attribute] = $this->negateAmount($this->formatAmount($value));
+                continue;
+            }
+
             if (in_array($attribute, [
                 'order_amount',
                 'merchant_settlement_amount',
@@ -546,7 +554,6 @@ class AlipayBillImporter
                 'coupon_amount',
                 'merchant_red_envelope_amount',
                 'card_amount',
-                'service_fee_amount',
                 'profit_sharing_amount',
             ], true)) {
                 $data[$attribute] = $this->formatAmount($value);
@@ -580,6 +587,19 @@ class AlipayBillImporter
         }
 
         return number_format((float) $cleaned, 2, '.', '');
+    }
+
+    /**
+     * 对已格式化的金额取反（保留两位小数，并消除 -0.00）。
+     */
+    private function negateAmount(string $amount): string
+    {
+        $value = (float) $amount;
+        if ($value === 0.0) {
+            return '0.00';
+        }
+
+        return number_format(-$value, 2, '.', '');
     }
 
     private function formatDateTime(?string $value): ?string
