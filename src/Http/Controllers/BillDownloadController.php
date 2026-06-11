@@ -6,6 +6,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Storage;
+use InvalidArgumentException;
 use WeiJuKeJi\PaymentBill\Http\Requests\BillDownload\BillDownloadCalendarRequest;
 use WeiJuKeJi\PaymentBill\Http\Requests\BillDownload\BillDownloadFilterRequest;
 use WeiJuKeJi\PaymentBill\Http\Requests\BillDownload\BillDownloadStoreRequest;
@@ -100,12 +101,16 @@ class BillDownloadController extends Controller
             'tar_type' => $data['tar_type'] ?? null,
         ], static fn ($value) => $value !== null && $value !== false);
 
-        $record = $this->billDownloadService->download(
-            $data['payment_channel_id'],
-            $data['bill_date'],
-            $billType,
-            $options
-        );
+        try {
+            $record = $this->billDownloadService->download(
+                $data['payment_channel_id'],
+                $data['bill_date'],
+                $billType,
+                $options
+            );
+        } catch (InvalidArgumentException $exception) {
+            return $this->error($exception->getMessage(), 400);
+        }
 
         return $this->respondWithResource($record, BillDownloadResource::class, 'created', 200);
     }
@@ -320,7 +325,7 @@ class BillDownloadController extends Controller
             );
 
             return $this->respondWithResource($record, BillDownloadResource::class, '账单下载任务已派发');
-        } catch (\InvalidArgumentException $e) {
+        } catch (InvalidArgumentException $e) {
             return $this->error($e->getMessage(), 400);
         } catch (\Exception $e) {
             return $this->error('下载任务派发失败：'.$e->getMessage(), 500);

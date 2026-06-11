@@ -28,7 +28,7 @@ class PaymentChannelUpdateRequest extends FormRequest
         }
 
         // 处理布尔字段
-        $booleanFields = ['is_enabled'];
+        $booleanFields = ['is_enabled', 'is_bill_download_enabled'];
         foreach ($booleanFields as $field) {
             if ($this->has($field) && is_string($this->{$field})) {
                 $this->merge([$field => filter_var($this->{$field}, FILTER_VALIDATE_BOOLEAN)]);
@@ -43,6 +43,7 @@ class PaymentChannelUpdateRequest extends FormRequest
             'channel' => ['sometimes', 'string', Rule::in(['wechat', 'alipay'])],
             'mode' => ['sometimes', 'string', Rule::in(['normal', 'service'])],
             'is_enabled' => ['sometimes', 'boolean'],
+            'is_bill_download_enabled' => ['sometimes', 'boolean'],
             'remark' => ['sometimes', 'nullable', 'string'],
             'alipay_app_id' => ['sometimes', 'nullable', 'string', 'max:64'],
             'alipay_app_secret_cert' => ['sometimes', 'nullable', 'string'],
@@ -75,6 +76,7 @@ class PaymentChannelUpdateRequest extends FormRequest
             'channel' => '支付渠道',
             'mode' => '支付模式',
             'is_enabled' => '是否启用',
+            'is_bill_download_enabled' => '是否开启下载账单',
             'remark' => '备注',
             'alipay_app_id' => '支付宝应用ID',
             'alipay_app_secret_cert' => '支付宝应用私钥',

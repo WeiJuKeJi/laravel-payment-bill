@@ -15,6 +15,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property string $channel
  * @property string|null $mode
  * @property bool $is_enabled
+ * @property bool $is_bill_download_enabled
  * @property string|null $remark
  * @property array|null $extra
  * @property \Illuminate\Support\Carbon|null $created_at
@@ -37,6 +38,7 @@ class PaymentChannel extends Model
         'channel',
         'mode',
         'is_enabled',
+        'is_bill_download_enabled',
         'remark',
         'alipay_app_id',
         'alipay_app_secret_cert',
@@ -63,6 +65,7 @@ class PaymentChannel extends Model
 
     protected $casts = [
         'is_enabled' => 'boolean',
+        'is_bill_download_enabled' => 'boolean',
         'extra' => 'array',
     ];
 
@@ -95,10 +98,26 @@ class PaymentChannel extends Model
     }
 
     /**
+     * 查询作用域 - 已开启账单下载
+     */
+    public function scopeBillDownloadEnabled($query)
+    {
+        return $query->where('is_bill_download_enabled', true);
+    }
+
+    /**
      * 访问器 - 启用状态文本
      */
     public function getIsEnabledTextAttribute(): string
     {
         return $this->is_enabled ? '启用' : '停用';
+    }
+
+    /**
+     * 访问器 - 账单下载状态文本
+     */
+    public function getIsBillDownloadEnabledTextAttribute(): string
+    {
+        return $this->is_bill_download_enabled ? '启用' : '停用';
     }
 }

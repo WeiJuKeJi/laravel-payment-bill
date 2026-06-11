@@ -27,7 +27,7 @@ class PaymentChannelStoreRequest extends FormRequest
         }
 
         // 处理布尔字段
-        $booleanFields = ['is_enabled'];
+        $booleanFields = ['is_enabled', 'is_bill_download_enabled'];
         foreach ($booleanFields as $field) {
             if ($this->has($field) && is_string($this->{$field})) {
                 $this->merge([$field => filter_var($this->{$field}, FILTER_VALIDATE_BOOLEAN)]);
@@ -41,6 +41,10 @@ class PaymentChannelStoreRequest extends FormRequest
         if (! $this->has('is_enabled')) {
             $this->merge(['is_enabled' => true]);
         }
+
+        if (! $this->has('is_bill_download_enabled')) {
+            $this->merge(['is_bill_download_enabled' => true]);
+        }
     }
 
     public function rules(): array
@@ -50,6 +54,7 @@ class PaymentChannelStoreRequest extends FormRequest
             'channel' => ['required', 'string', Rule::in(['wechat', 'alipay'])],
             'mode' => ['required', 'string', Rule::in(['normal', 'service'])],
             'is_enabled' => ['sometimes', 'boolean'],
+            'is_bill_download_enabled' => ['sometimes', 'boolean'],
             'remark' => ['nullable', 'string'],
             'alipay_app_id' => ['nullable', 'string', 'max:64'],
             'alipay_app_secret_cert' => ['nullable', 'string'],
@@ -85,6 +90,7 @@ class PaymentChannelStoreRequest extends FormRequest
             'channel' => '支付渠道',
             'mode' => '支付模式',
             'is_enabled' => '是否启用',
+            'is_bill_download_enabled' => '是否开启下载账单',
             'remark' => '备注',
             'alipay_app_id' => '支付宝应用ID',
             'alipay_app_secret_cert' => '支付宝应用私钥',

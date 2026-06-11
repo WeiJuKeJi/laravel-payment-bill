@@ -131,13 +131,15 @@ class DownloadBillsCommand extends Command
     }
 
     /**
-     * 根据参数解析目标渠道，默认选择所有启用的渠道。
+     * 根据参数解析目标渠道，默认选择所有启用且开启账单下载的渠道。
      */
     protected function resolveChannels(): Collection
     {
         $identifiers = array_map(static fn ($value) => trim((string) $value), (array) $this->option('channel'));
         $identifiers = array_values(array_filter($identifiers, static fn ($value) => $value !== ''));
-        $query = PaymentChannel::query()->where('is_enabled', true);
+        $query = PaymentChannel::query()
+            ->where('is_enabled', true)
+            ->where('is_bill_download_enabled', true);
 
         if (! empty($identifiers)) {
             $numericIds = array_map('intval', array_filter($identifiers, static fn ($value) => ctype_digit($value)));

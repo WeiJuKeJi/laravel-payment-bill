@@ -21,6 +21,7 @@ class PaymentChannelController extends Controller
             'channel',
             'mode',
             'is_enabled',
+            'is_bill_download_enabled',
             'keywords',
             'per_page',
             'page',

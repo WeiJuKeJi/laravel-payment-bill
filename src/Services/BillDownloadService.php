@@ -51,6 +51,10 @@ class BillDownloadService
             ? $paymentChannel
             : PaymentChannel::query()->findOrFail($paymentChannel);
 
+        if (! $channel->is_bill_download_enabled) {
+            throw new InvalidArgumentException('支付渠道未开启账单下载。');
+        }
+
         $date = $this->normalizeDate($billDate);
         $normalizedType = strtoupper($billType ?? 'ALL');
         $force = (bool) Arr::get($options, 'force', false);

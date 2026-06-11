@@ -49,6 +49,15 @@
             }
           },
           {
+            "name": "is_bill_download_enabled",
+            "in": "query",
+            "description": "是否开启下载账单 (1=开启, 0=关闭)",
+            "schema": {
+              "type": "integer",
+              "enum": [0, 1]
+            }
+          },
+          {
             "name": "keywords",
             "in": "query",
             "description": "关键词搜索(渠道名称)",
@@ -83,6 +92,8 @@
                         "mode": "normal",
                         "is_enabled": true,
                         "is_enabled_text": "启用",
+                        "is_bill_download_enabled": true,
+                        "is_bill_download_enabled_text": "启用",
                         "remark": null,
                         "wechat_mch_id": "1234567890",
                         "created_at": "2025-11-14T00:00:00.000Z",
@@ -125,6 +136,7 @@
                   "channel": { "type": "string", "enum": ["wechat", "alipay"], "description": "渠道类型" },
                   "mode": { "type": "string", "enum": ["normal", "service"], "default": "normal", "description": "支付模式:normal-直连,service-服务商" },
                   "is_enabled": { "type": "boolean", "default": true, "description": "是否启用" },
+                  "is_bill_download_enabled": { "type": "boolean", "default": true, "description": "是否开启下载账单" },
                   "remark": { "type": "string", "description": "备注" },
                   "wechat_mch_id": { "type": "string", "description": "微信商户号" },
                   "wechat_mch_secret_key": { "type": "string", "description": "微信v3密钥" },
@@ -184,7 +196,9 @@
                     "channel_text": "微信支付",
                     "mode": "normal",
                     "is_enabled": true,
-                    "is_enabled_text": "启用"
+                    "is_enabled_text": "启用",
+                    "is_bill_download_enabled": true,
+                    "is_bill_download_enabled_text": "启用"
                   }
                 }
               }
@@ -233,6 +247,8 @@
                     "mode": "normal",
                     "is_enabled": true,
                     "is_enabled_text": "启用",
+                    "is_bill_download_enabled": true,
+                    "is_bill_download_enabled_text": "启用",
                     "remark": null,
                     "wechat_mch_id": "1234567890",
                     "wechat_app_id": "wx1234567890abcdef",
@@ -278,6 +294,7 @@
                 "properties": {
                   "name": { "type": "string", "description": "渠道名称" },
                   "is_enabled": { "type": "boolean", "description": "是否启用" },
+                  "is_bill_download_enabled": { "type": "boolean", "description": "是否开启下载账单" },
                   "remark": { "type": "string", "description": "备注" },
                   "wechat_mch_secret_key": { "type": "string", "description": "微信v3密钥" },
                   "wechat_mch_public_cert_file": { "type": "string", "format": "binary", "description": "微信商户公钥证书文件" }

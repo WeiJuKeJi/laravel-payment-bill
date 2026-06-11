@@ -19,6 +19,8 @@ class PaymentChannelResource extends JsonResource
             'mode' => $this->mode,
             'is_enabled' => $this->is_enabled,
             'is_enabled_text' => $this->is_enabled_text,
+            'is_bill_download_enabled' => $this->is_bill_download_enabled,
+            'is_bill_download_enabled_text' => $this->is_bill_download_enabled_text,
             'remark' => $this->remark,
             // 支付宝配置
             'alipay_app_id' => $this->alipay_app_id,

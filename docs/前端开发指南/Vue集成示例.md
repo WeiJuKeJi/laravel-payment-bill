@@ -554,6 +554,7 @@ export interface PaymentChannel {
   name: string;
   channel: 'wechat' | 'alipay';
   is_enabled: boolean;
+  is_bill_download_enabled: boolean;
 }
 
 export interface UploadFileOptions {

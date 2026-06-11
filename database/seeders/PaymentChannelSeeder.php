@@ -17,6 +17,7 @@ class PaymentChannelSeeder extends Seeder
                 'mode'                        => 'service',
                 'remark'                      => '润泽测试',
                 'is_enabled'                  => true,
+                'is_bill_download_enabled'    => true,
                 'wechat_mch_id'               => '1609502409',
                 'wechat_mch_secret_key_v2'    => 'qtdP8WFwlH2Nc0sBQVz9gTSiX1fjIrAu',
                 'wechat_mch_secret_key'       => 'TWOKcZhl1wjUk0fsQ9gx4i5pqRNaHBEC',

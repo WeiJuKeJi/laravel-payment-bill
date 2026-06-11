@@ -18,6 +18,7 @@ return new class extends Migration
             $table->string('mode', 32)->default('normal')->comment('支付模式：normal-直连、service-服务商');
             $table->text('remark')->nullable()->comment('备注');
             $table->boolean('is_enabled')->default(true)->comment('是否启用');
+            $table->boolean('is_bill_download_enabled')->default(true)->comment('是否开启下载账单');
 
             // 支付宝配置
             $table->string('alipay_app_id', 64)->nullable()->comment('支付宝应用ID');
@@ -49,6 +50,7 @@ return new class extends Migration
 
             $table->index('channel');
             $table->index('is_enabled');
+            $table->index('is_bill_download_enabled');
         });
     }
 

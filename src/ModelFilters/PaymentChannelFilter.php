@@ -48,6 +48,16 @@ class PaymentChannelFilter extends ModelFilter
     }
 
     /**
+     * 按账单下载启用状态筛选
+     */
+    public function isBillDownloadEnabled(bool|string|int $value): self
+    {
+        $enabled = filter_var($value, FILTER_VALIDATE_BOOLEAN);
+
+        return $this->where('is_bill_download_enabled', $enabled);
+    }
+
+    /**
      * 关键词搜索
      */
     public function keywords(string $keywords): self
