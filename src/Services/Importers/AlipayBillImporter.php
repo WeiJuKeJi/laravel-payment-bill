@@ -106,6 +106,8 @@ class AlipayBillImporter
                 $this->importSummary($summaryFile);
             }
 
+            $this->normalizeSummaryTotalsFromDetails();
+
             DB::commit();
         } catch (\Throwable $throwable) {
             DB::rollBack();
@@ -420,17 +422,16 @@ class AlipayBillImporter
         $bizType = $formatted['biz_type'] ?? '';
         $orderAmountValue = $this->formatAmount($orderAmount);
         $settlementAmountValue = $this->formatAmount($settlementAmount);
+        $isRefund = str_contains((string) $bizType, '退款');
 
-        if (str_contains((string) $bizType, '退款')) {
-            $refundAmount = $orderAmountValue;
-            $refundAmount = ltrim($refundAmount, '+');
-            $refundAmount = ltrim($refundAmount, '-');
+        if ($isRefund) {
+            $refundAmount = $this->absoluteAmount($orderAmountValue);
+        } else {
+            $this->importTotals['import_total_order_amount'] = $this->bcAdd(
+                $this->importTotals['import_total_order_amount'],
+                $orderAmountValue
+            );
         }
-
-        $this->importTotals['import_total_order_amount'] = $this->bcAdd(
-            $this->importTotals['import_total_order_amount'],
-            $orderAmountValue
-        );
 
         $this->importTotals['import_total_settlement_amount'] = $this->bcAdd(
             $this->importTotals['import_total_settlement_amount'],
@@ -446,6 +447,19 @@ class AlipayBillImporter
             $this->importTotals['import_total_fee_amount'],
             $this->formatAmount($formatted['service_fee_amount'] ?? '0.00')
         );
+    }
+
+    private function normalizeSummaryTotalsFromDetails(): void
+    {
+        // 支付宝业务汇总 CSV 的订单金额会被退款行抵减，账单下载记录展示需要支付总额口径。
+        $this->summaryStats['bill_summary_order_amount'] = $this->importTotals['import_total_order_amount'];
+
+        if (
+            bccomp($this->summaryStats['bill_summary_refund_amount'], '0.00', 2) === 0
+            && bccomp($this->importTotals['import_total_refund_amount'], '0.00', 2) > 0
+        ) {
+            $this->summaryStats['bill_summary_refund_amount'] = $this->importTotals['import_total_refund_amount'];
+        }
     }
 
     private function resetImportTotals(): void
@@ -600,6 +614,11 @@ class AlipayBillImporter
         }
 
         return number_format(-$value, 2, '.', '');
+    }
+
+    private function absoluteAmount(string $amount): string
+    {
+        return number_format(abs((float) $amount), 2, '.', '');
     }
 
     private function formatDateTime(?string $value): ?string
