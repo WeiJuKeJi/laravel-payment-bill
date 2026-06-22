@@ -34,7 +34,8 @@ class LocalBillFileImportController extends Controller
                 paymentChannelId: $data['payment_channel_id'],
                 billType: strtoupper($data['bill_type'] ?? 'ALL'),
                 force: (bool) ($data['force'] ?? false),
-                autoImport: (bool) ($data['auto_import'] ?? false)
+                autoImport: (bool) ($data['auto_import'] ?? false),
+                billPeriod: $data['bill_period'] ?? 'day'
             );
 
             // 判断是否有失败的文件

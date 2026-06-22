@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Storage;
 use WeiJuKeJi\PaymentBill\Models\BillDownload;
 use WeiJuKeJi\PaymentBill\Models\PaymentChannel;
 use WeiJuKeJi\PaymentBill\Services\BillImportService;
+use WeiJuKeJi\PaymentBill\Services\WechatBillMonthlySplitter;
 use Throwable;
 
 /**
@@ -22,6 +23,7 @@ class ImportLocalBillFilesCommand extends Command
         {--channel= : 支付渠道ID或标识（必填）}
         {--pattern=*.csv : 文件名匹配模式}
         {--bill-type=ALL : 账单类型，默认为 ALL}
+        {--bill-period=day : 账单周期，day 或 month。month 会按交易时间拆分微信月账单}
         {--auto-import : 导入文件后自动触发账单数据导入任务}
         {--force : 强制覆盖已存在的记录}
         {--dry-run : 预览模式，不实际执行操作}
@@ -60,6 +62,17 @@ class ImportLocalBillFilesCommand extends Command
 
         $this->info("支付渠道：{$channel->name}（{$channel->channel}，ID: {$channel->id}）");
 
+        $billPeriod = strtolower((string) ($this->option('bill-period') ?? 'day'));
+        if (!in_array($billPeriod, ['day', 'month'], true)) {
+            $this->error('bill-period 参数仅支持 day 或 month。');
+            return self::FAILURE;
+        }
+
+        if ($billPeriod === 'month' && $channel->channel !== 'wechat') {
+            $this->error('月账单拆分导入当前仅支持微信账单。');
+            return self::FAILURE;
+        }
+
         // 扫描文件
         $pattern = $this->option('pattern') ?? '*.csv';
         if (is_array($pattern)) {
@@ -75,7 +88,9 @@ class ImportLocalBillFilesCommand extends Command
         $this->info("找到 ".count($files)." 个匹配的文件。");
 
         // 解析文件
-        $parsedFiles = $this->parseFiles($files);
+        $parsedFiles = $billPeriod === 'month'
+            ? $this->parseMonthlyWechatFiles($files)
+            : $this->parseFiles($files);
         if (empty($parsedFiles)) {
             $this->warn('没有可以解析的有效文件。');
             return self::SUCCESS;
@@ -83,7 +98,9 @@ class ImportLocalBillFilesCommand extends Command
 
         // 交互式选择
         if ($this->option('interactive')) {
+            $allParsedFiles = $parsedFiles;
             $parsedFiles = $this->interactiveSelect($parsedFiles);
+            $this->cleanupUnselectedParsedFiles($allParsedFiles, $parsedFiles);
             if (empty($parsedFiles)) {
                 $this->info('未选择任何文件。');
                 return self::SUCCESS;
@@ -95,12 +112,14 @@ class ImportLocalBillFilesCommand extends Command
 
         if ($this->option('dry-run')) {
             $this->warn('预览模式，未实际执行操作。');
+            $this->cleanupParsedFiles($parsedFiles);
             return self::SUCCESS;
         }
 
         // 确认执行
         if (!$this->option('interactive') && !$this->confirm('确认导入以上文件？', true)) {
             $this->info('操作已取消。');
+            $this->cleanupParsedFiles($parsedFiles);
             return self::SUCCESS;
         }
 
@@ -178,6 +197,35 @@ class ImportLocalBillFilesCommand extends Command
         }
 
         // 按日期排序
+        usort($parsed, fn ($a, $b) => $a['date']->timestamp <=> $b['date']->timestamp);
+
+        return $parsed;
+    }
+
+    /**
+     * 解析微信月账单文件，并按交易时间拆分为日账单文件。
+     */
+    protected function parseMonthlyWechatFiles(array $files): array
+    {
+        $parsed = [];
+        $splitter = new WechatBillMonthlySplitter();
+
+        foreach ($files as $filePath) {
+            $filename = basename($filePath);
+
+            try {
+                $dailyFiles = $splitter->split($filePath, $filename);
+                $parsed = array_merge($parsed, $dailyFiles);
+                $this->line(sprintf(
+                    '已拆分月账单：%s → %d 个日账单',
+                    $filename,
+                    count($dailyFiles)
+                ));
+            } catch (Throwable $e) {
+                $this->warn("月账单拆分失败，跳过：{$filename}，原因：{$e->getMessage()}");
+            }
+        }
+
         usort($parsed, fn ($a, $b) => $a['date']->timestamp <=> $b['date']->timestamp);
 
         return $parsed;
@@ -274,11 +322,12 @@ class ImportLocalBillFilesCommand extends Command
             return [
                 $file['date']->format('Y-m-d'),
                 $file['filename'],
+                $file['source_filename'] ?? $file['filename'],
                 $this->formatFileSize($file['size']),
             ];
         }, $parsedFiles);
 
-        $this->table(['账单日期', '文件名', '大小'], $rows);
+        $this->table(['账单日期', '文件名', '来源文件', '大小'], $rows);
     }
 
     /**
@@ -350,6 +399,8 @@ class ImportLocalBillFilesCommand extends Command
                     $file['filename'],
                     $e->getMessage()
                 ));
+            } finally {
+                $this->cleanupParsedFile($file);
             }
         }
 
@@ -450,6 +501,51 @@ class ImportLocalBillFilesCommand extends Command
         }
 
         return round($bytes, 2) . ' ' . $units[$i];
+    }
+
+    /**
+     * 清理拆分月账单时产生的临时文件。
+     */
+    protected function cleanupParsedFiles(array $files): void
+    {
+        foreach ($files as $file) {
+            $this->cleanupParsedFile($file);
+        }
+    }
+
+    /**
+     * 清理交互式模式中未选中的拆分临时文件。
+     */
+    protected function cleanupUnselectedParsedFiles(array $allFiles, array $selectedFiles): void
+    {
+        $selectedPaths = array_flip(array_filter(array_map(
+            fn ($file) => $file['path'] ?? null,
+            $selectedFiles
+        )));
+
+        foreach ($allFiles as $file) {
+            $path = $file['path'] ?? null;
+            if (!is_string($path) || isset($selectedPaths[$path])) {
+                continue;
+            }
+
+            $this->cleanupParsedFile($file);
+        }
+    }
+
+    /**
+     * 清理单个临时文件。
+     */
+    protected function cleanupParsedFile(array $file): void
+    {
+        if (!($file['temporary'] ?? false)) {
+            return;
+        }
+
+        $path = $file['path'] ?? null;
+        if (is_string($path) && is_file($path)) {
+            @unlink($path);
+        }
     }
 
     /**

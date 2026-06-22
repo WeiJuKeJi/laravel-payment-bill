@@ -10,7 +10,7 @@
       "post": {
         "tags": ["PaymentBill/LocalBillFileImport"],
         "summary": "批量导入本地账单文件",
-        "description": "上传一个或多个历史账单文件(CSV格式),系统将:\n1. 验证文件格式(必须是CSV)\n2. 解析文件名获取账单日期(支持 YYYY-MM-DD_ALL.csv 或 YYYYMMDD.csv)\n3. 将文件存储到规范路径\n4. 创建或更新 BillDownload 记录\n5. 可选自动触发账单数据导入任务\n\n**使用场景:**\n- 导入历史账单(微信仅支持下载最近3个月)\n- 批量补充数据\n- 数据迁移\n\n**测试用例:**\n1. 单文件导入: 上传1个文件,不强制覆盖,不自动导入\n2. 多文件导入: 上传多个文件,自动按日期排序\n3. 强制覆盖: `force=true`,覆盖已存在的记录\n4. 自动导入数据: `auto_import=true`,导入文件后自动触发数据导入任务\n5. 文件名解析测试:\n   - `2022-07-24_ALL.csv` → 日期:2022-07-24\n   - `20220724.csv` → 日期:2022-07-24\n6. 错误处理:\n   - 上传非CSV文件 → 返回验证错误\n   - 文件名无法解析日期 → 返回错误信息\n   - 支付渠道不存在 → 返回404\n   - 支付渠道已禁用 → 返回错误",
+        "description": "上传一个或多个历史账单文件(CSV格式),系统将:\n1. 验证文件格式(必须是CSV)\n2. 日账单按文件名解析日期(支持 YYYY-MM-DD_ALL.csv 或 YYYYMMDD.csv)，微信月账单可按交易时间拆分为日账单\n3. 将文件存储到规范路径\n4. 创建或更新 BillDownload 记录\n5. 可选自动触发账单数据导入任务\n\n**使用场景:**\n- 导入历史账单(微信仅支持下载最近3个月)\n- 导入微信月账单并拆分为日账单\n- 批量补充数据\n- 数据迁移\n\n**测试用例:**\n1. 单文件导入: 上传1个文件,不强制覆盖,不自动导入\n2. 多文件导入: 上传多个文件,自动按日期排序\n3. 强制覆盖: `force=true`,覆盖已存在的记录\n4. 自动导入数据: `auto_import=true`,导入文件后自动触发数据导入任务\n5. 微信月账单导入: `bill_period=month`,按交易时间拆分\n6. 文件名解析测试:\n   - `2022-07-24_ALL.csv` → 日期:2022-07-24\n   - `20220724.csv` → 日期:2022-07-24\n7. 错误处理:\n   - 上传非CSV文件 → 返回验证错误\n   - 文件名无法解析日期 → 返回错误信息\n   - 支付渠道不存在 → 返回404\n   - 支付渠道已禁用 → 返回错误",
         "operationId": "importLocalBillFiles",
         "security": [{ "bearerAuth": [] }],
         "requestBody": {
@@ -28,7 +28,7 @@
                   },
                   "files": {
                     "type": "array",
-                    "description": "账单文件列表(CSV格式,最多100个,单个文件不超过10MB)",
+                    "description": "账单文件列表(CSV格式,最多100个,单个文件不超过50MB)",
                     "items": {
                       "type": "string",
                       "format": "binary"
@@ -42,6 +42,13 @@
                     "enum": ["ALL", "SUCCESS", "REFUND"],
                     "default": "ALL",
                     "example": "ALL"
+                  },
+                  "bill_period": {
+                    "type": "string",
+                    "description": "账单周期，day 为日账单，month 为微信月账单拆分导入",
+                    "enum": ["day", "month"],
+                    "default": "day",
+                    "example": "month"
                   },
                   "force": {
                     "type": "boolean",
@@ -85,6 +92,17 @@
                     "files": ["(binary)"],
                     "bill_type": "ALL",
                     "force": true,
+                    "auto_import": true
+                  }
+                },
+                "wechatMonthlyBill": {
+                  "summary": "微信月账单拆分导入",
+                  "value": {
+                    "payment_channel_id": 1,
+                    "files": ["(binary)"],
+                    "bill_type": "ALL",
+                    "bill_period": "month",
+                    "force": false,
                     "auto_import": true
                   }
                 }

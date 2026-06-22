@@ -34,7 +34,8 @@ class LocalBillFileImportService
         int $paymentChannelId,
         string $billType = 'ALL',
         bool $force = false,
-        bool $autoImport = false
+        bool $autoImport = false,
+        string $billPeriod = 'day'
     ): array {
         // 验证支付渠道
         $channel = $this->resolveChannel($paymentChannelId);
@@ -43,9 +44,19 @@ class LocalBillFileImportService
         }
 
         $billType = strtoupper($billType);
+        $billPeriod = strtolower($billPeriod);
+        if (! in_array($billPeriod, ['day', 'month'], true)) {
+            throw new InvalidArgumentException('账单周期仅支持 day 或 month');
+        }
+
+        if ($billPeriod === 'month' && $channel->channel !== 'wechat') {
+            throw new InvalidArgumentException('月账单拆分导入当前仅支持微信账单');
+        }
 
         // 解析文件
-        $parsedFiles = $this->parseUploadedFiles($files);
+        $parsedFiles = $billPeriod === 'month'
+            ? $this->parseUploadedMonthlyWechatFiles($files)
+            : $this->parseUploadedFiles($files);
 
         if (empty($parsedFiles)) {
             return [
@@ -61,6 +72,38 @@ class LocalBillFileImportService
 
         // 批量导入
         return $this->importFiles($parsedFiles, $channel, $billType, $force, $autoImport);
+    }
+
+    /**
+     * 解析上传的微信月账单文件，并按交易时间拆分为日账单文件。
+     *
+     * @param  array<UploadedFile>  $files
+     * @return array<array{path: string, filename: string, date: Carbon, size: int, source_filename: string, temporary: bool}>
+     */
+    private function parseUploadedMonthlyWechatFiles(array $files): array
+    {
+        $parsed = [];
+        $splitter = new WechatBillMonthlySplitter();
+
+        foreach ($files as $file) {
+            if (! $file instanceof UploadedFile || ! $file->isValid()) {
+                continue;
+            }
+
+            $path = $file->getRealPath();
+            if (! $path) {
+                throw new InvalidArgumentException('无法读取上传的月账单文件：'.$file->getClientOriginalName());
+            }
+
+            $parsed = array_merge(
+                $parsed,
+                $splitter->split($path, $file->getClientOriginalName())
+            );
+        }
+
+        usort($parsed, fn ($a, $b) => $a['date']->timestamp <=> $b['date']->timestamp);
+
+        return $parsed;
     }
 
     /**
@@ -176,6 +219,7 @@ class LocalBillFileImportService
 
                 $detail = [
                     'filename' => $file['filename'],
+                    'source_filename' => $file['source_filename'] ?? $file['filename'],
                     'date' => $file['date']->format('Y-m-d'),
                     'action' => $result['action'],
                     'success' => true,
@@ -212,11 +256,14 @@ class LocalBillFileImportService
                 $stats['failed']++;
                 $stats['details'][] = [
                     'filename' => $file['filename'],
-                    'date' => $file['date']->format('Y-m-d'),
+                    'source_filename' => $file['source_filename'] ?? $file['filename'],
+                    'date' => isset($file['date']) ? $file['date']->format('Y-m-d') : null,
                     'action' => 'failed',
                     'success' => false,
                     'message' => $e->getMessage(),
                 ];
+            } finally {
+                $this->cleanupTemporaryFile($file);
             }
         }
 
@@ -291,7 +338,13 @@ class LocalBillFileImportService
      */
     private function storeUploadedFile(array $file, PaymentChannel $channel, Carbon $billDate, string $billType): string
     {
-        $extension = strtolower($file['file']->getClientOriginalExtension());
+        $extension = isset($file['file'])
+            ? strtolower($file['file']->getClientOriginalExtension())
+            : strtolower(pathinfo($file['filename'], PATHINFO_EXTENSION));
+
+        if ($extension === '') {
+            $extension = 'csv';
+        }
 
         $directory = sprintf(
             'payment/bills/%s/%d',
@@ -302,10 +355,28 @@ class LocalBillFileImportService
         $filename = sprintf('%s.%s', $billDate->format('Ymd'), $extension);
         $path = $directory.'/'.$filename;
 
-        // 使用 Laravel Storage 的 putFileAs 方法存储上传文件
-        Storage::disk($this->storageDisk)->putFileAs($directory, $file['file'], $filename);
+        if (isset($file['file'])) {
+            Storage::disk($this->storageDisk)->putFileAs($directory, $file['file'], $filename);
+        } else {
+            Storage::disk($this->storageDisk)->put($path, file_get_contents($file['path']));
+        }
 
         return $path;
+    }
+
+    /**
+     * 清理月账单拆分产生的临时日账单文件。
+     */
+    private function cleanupTemporaryFile(array $file): void
+    {
+        if (! ($file['temporary'] ?? false)) {
+            return;
+        }
+
+        $path = $file['path'] ?? null;
+        if (is_string($path) && is_file($path)) {
+            @unlink($path);
+        }
     }
 
     /**

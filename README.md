@@ -818,7 +818,14 @@ php artisan payment-bill:import-local-files \
     --channel=wechat \
     --auto-import
 
-# 5. 强制覆盖已存在的记录
+# 5. 导入微信月账单，按交易时间自动拆分为日账单后导入
+php artisan payment-bill:import-local-files \
+    --directory=/path/to/monthly-bills \
+    --channel=wechat \
+    --bill-period=month \
+    --auto-import
+
+# 6. 强制覆盖已存在的记录
 php artisan payment-bill:import-local-files \
     --directory=/path/to/bills \
     --channel=wechat \
@@ -834,6 +841,7 @@ php artisan payment-bill:import-local-files \
 | `--channel` | 支付渠道ID或标识（wechat/alipay） | 是 | - |
 | `--pattern` | 文件名匹配模式 | 否 | *.csv |
 | `--bill-type` | 账单类型 | 否 | ALL |
+| `--bill-period` | 账单周期，`day` 或 `month`；`month` 仅支持微信账单 | 否 | day |
 | `--auto-import` | 导入文件后自动触发账单数据导入任务 | 否 | false |
 | `--force` | 强制覆盖已存在的记录 | 否 | false |
 | `--dry-run` | 预览模式，不实际执行操作 | 否 | false |
@@ -843,6 +851,7 @@ php artisan payment-bill:import-local-files \
 
 - `2022-07-24_ALL.csv` → 日期：2022-07-24，类型：ALL
 - `20220724.csv` → 日期：2022-07-24，类型：ALL（默认）
+- 微信月账单使用 `--bill-period=month` 时不依赖文件名日期，会按 CSV 中的 `交易时间` 拆分为每日账单记录。
 
 **使用场景：**
 

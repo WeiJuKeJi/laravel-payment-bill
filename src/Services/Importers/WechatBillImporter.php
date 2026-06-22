@@ -80,6 +80,8 @@ class WechatBillImporter
      */
     private array $summaryStats = [];
 
+    private bool $summaryFound = false;
+
     /**
      * @param  int  $paymentChannelId
      * @param  string  $storageDisk
@@ -131,6 +133,7 @@ class WechatBillImporter
                 if ($this->isSummaryLabelRow($row)) {
                     $summaryValues = $this->readNextNonEmptyRow($file);
                     $this->processSummaryRow($row, $summaryValues ?? []);
+                    $this->summaryFound = true;
                     break;
                 }
 
@@ -157,6 +160,10 @@ class WechatBillImporter
             ]);
 
             throw new RuntimeException($throwable->getMessage(), 0, $throwable);
+        }
+
+        if (! $this->summaryFound) {
+            $this->fillSummaryFromImportTotals();
         }
 
         return [
@@ -196,6 +203,23 @@ class WechatBillImporter
             'bill_summary_fee_amount' => '0.00',
             'bill_summary_order_amount' => '0.00',
             'bill_summary_refund_apply_amount' => '0.00',
+        ];
+        $this->summaryFound = false;
+    }
+
+    /**
+     * 拆分后的日账单没有汇总行时，使用明细导入合计作为账单汇总。
+     */
+    private function fillSummaryFromImportTotals(): void
+    {
+        $this->summaryStats = [
+            'bill_summary_transaction_count' => $this->importTotals['import_total_transaction_count'],
+            'bill_summary_settlement_amount' => $this->importTotals['import_total_settlement_amount'],
+            'bill_summary_refund_amount' => $this->importTotals['import_total_refund_amount'],
+            'bill_summary_refund_voucher_amount' => $this->importTotals['import_total_refund_voucher_amount'],
+            'bill_summary_fee_amount' => $this->importTotals['import_total_fee_amount'],
+            'bill_summary_order_amount' => $this->importTotals['import_total_order_amount'],
+            'bill_summary_refund_apply_amount' => $this->importTotals['import_total_refund_apply_amount'],
         ];
     }
 
