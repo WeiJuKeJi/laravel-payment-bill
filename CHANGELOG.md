@@ -4,6 +4,17 @@ All notable changes to `laravel-payment-bill` will be documented in this file.
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-06-22
+
+### Added
+- 新增微信月账单导入支持，可按 `交易时间` 自动拆分为每日账单文件和下载记录。
+- 本地账单导入 API 新增 `bill_period` 参数，支持 `day` 与 `month` 两种账单周期。
+- `payment-bill:import-local-files` 命令新增 `--bill-period=month` 选项。
+
+### Changed
+- 拆分后的微信日账单缺少汇总行时，导入器会使用明细合计回填账单汇总统计。
+- 本地账单上传单文件大小限制从 10MB 调整为 50MB。
+
 ## [1.2.0] - 2026-05-05
 
 ### Changed
