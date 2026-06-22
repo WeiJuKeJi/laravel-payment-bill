@@ -53,6 +53,14 @@ class LocalBillFileImportService
             throw new InvalidArgumentException('月账单拆分导入当前仅支持微信账单');
         }
 
+        if ($billPeriod === 'day' && $this->containsMonthlyBillFilename($files)) {
+            if ($channel->channel !== 'wechat') {
+                throw new InvalidArgumentException('检测到月账单文件名，但月账单拆分导入当前仅支持微信账单');
+            }
+
+            $billPeriod = 'month';
+        }
+
         // 解析文件
         $parsedFiles = $billPeriod === 'month'
             ? $this->parseUploadedMonthlyWechatFiles($files)
@@ -232,6 +240,22 @@ class LocalBillFileImportService
         }
 
         return count(array_unique($validDates)) >= 2;
+    }
+
+    /**
+     * 判断上传文件中是否包含微信商户平台月账单常见的日期范围文件名。
+     *
+     * @param  array<UploadedFile>  $files
+     */
+    private function containsMonthlyBillFilename(array $files): bool
+    {
+        foreach ($files as $file) {
+            if ($file instanceof UploadedFile && $this->looksLikeDateRangeFilename($file->getClientOriginalName())) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

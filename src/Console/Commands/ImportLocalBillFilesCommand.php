@@ -87,6 +87,16 @@ class ImportLocalBillFilesCommand extends Command
 
         $this->info("找到 ".count($files)." 个匹配的文件。");
 
+        if ($billPeriod === 'day' && $this->containsMonthlyBillFilename($files)) {
+            if ($channel->channel !== 'wechat') {
+                $this->error('检测到月账单文件名，但月账单拆分导入当前仅支持微信账单。');
+                return self::FAILURE;
+            }
+
+            $billPeriod = 'month';
+            $this->comment('检测到日期范围账单文件名，已自动按微信月账单拆分导入。');
+        }
+
         // 解析文件
         $parsedFiles = $billPeriod === 'month'
             ? $this->parseMonthlyWechatFiles($files)
@@ -304,6 +314,17 @@ class ImportLocalBillFilesCommand extends Command
         }
 
         return count(array_unique($validDates)) >= 2;
+    }
+
+    protected function containsMonthlyBillFilename(array $files): bool
+    {
+        foreach ($files as $filePath) {
+            if ($this->looksLikeDateRangeFilename(basename($filePath))) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

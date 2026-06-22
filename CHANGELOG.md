@@ -4,6 +4,11 @@ All notable changes to `laravel-payment-bill` will be documented in this file.
 
 ## [Unreleased]
 
+## [1.4.2] - 2026-06-22
+
+### Fixed
+- 微信账单导入检测到日期范围文件名时，即使请求未传 `bill_period=month`，也会自动按月账单拆分导入。
+
 ## [1.4.1] - 2026-06-22
 
 ### Fixed
