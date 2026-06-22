@@ -5,6 +5,9 @@ namespace WeiJuKeJi\PaymentBill\Http\Controllers;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
+use WeiJuKeJi\LaravelXlswriter\Facades\Xlswriter;
+use WeiJuKeJi\PaymentBill\Exports\WechatBillExport;
 use WeiJuKeJi\PaymentBill\Http\Requests\Reconciliation\ReconciliationRequest;
 use WeiJuKeJi\PaymentBill\Http\Requests\WechatBill\WechatBillFilterRequest;
 use WeiJuKeJi\PaymentBill\Http\Resources\WechatBillResource;
@@ -50,6 +53,30 @@ class WechatBillController extends Controller
         $paginator = $query->paginate($perPage);
 
         return $this->respondWithPaginationAndSummary($paginator, $summary, WechatBillResource::class);
+    }
+
+    public function export(WechatBillFilterRequest $request): BinaryFileResponse
+    {
+        $filters = $request->validated();
+        $order = Arr::pull($filters, 'order', 'desc');
+        Arr::forget($filters, ['per_page', 'with_channel']);
+
+        $direction = $order === 'asc' ? 'asc' : 'desc';
+
+        $query = WechatBill::query()
+            ->filter($filters)
+            ->with('paymentChannel')
+            ->orderBy('trade_time', $direction)
+            ->orderBy('id', $direction);
+
+        $filename = sprintf('payment-bill-wechat-bills-%s.xlsx', now()->format('YmdHis'));
+        $path = storage_path('app/tmp/payment-bill-exports/'.$filename);
+
+        Xlswriter::export(new WechatBillExport($query))->toFile($path, $filename);
+
+        return response()
+            ->download($path, $filename)
+            ->deleteFileAfterSend(true);
     }
 
     public function show(Request $request, WechatBill $wechatBill): JsonResponse

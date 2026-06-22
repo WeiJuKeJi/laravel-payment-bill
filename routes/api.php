@@ -34,6 +34,8 @@ Route::middleware(['api'])
                 ->name('local-bill-files.import');
 
             // 支付宝账单流水
+            Route::get('exports/alipay-bills', [AlipayBillController::class, 'export'])
+                ->name('exports.alipay-bills');
             Route::apiResource('alipay-bills', AlipayBillController::class)->only([
                 'index', 'show',
             ]);
@@ -47,6 +49,8 @@ Route::middleware(['api'])
             });
 
             // 微信账单流水
+            Route::get('exports/wechat-bills', [WechatBillController::class, 'export'])
+                ->name('exports.wechat-bills');
             Route::apiResource('wechat-bills', WechatBillController::class)->only([
                 'index', 'show',
             ]);
@@ -60,4 +64,3 @@ Route::middleware(['api'])
             });
         });
     });
-
