@@ -181,6 +181,11 @@ class ImportLocalBillFilesCommand extends Command
 
         foreach ($files as $filePath) {
             $filename = basename($filePath);
+            if ($this->looksLikeDateRangeFilename($filename)) {
+                $this->warn("文件名疑似月账单，请使用 --bill-period=month 导入，跳过：{$filename}");
+                continue;
+            }
+
             $date = $this->extractDateFromFilename($filename);
 
             if (!$date) {
@@ -241,24 +246,64 @@ class ImportLocalBillFilesCommand extends Command
         $nameWithoutExt = pathinfo($filename, PATHINFO_FILENAME);
 
         // 尝试匹配 YYYY-MM-DD 格式
-        if (preg_match('/(\d{4}-\d{2}-\d{2})/', $nameWithoutExt, $matches)) {
-            try {
-                return Carbon::createFromFormat('Y-m-d', $matches[1]);
-            } catch (Throwable $e) {
-                // 继续尝试其他格式
+        if (preg_match_all('/(?<!\d)(\d{4}-\d{2}-\d{2})(?!\d)/', $nameWithoutExt, $matches)) {
+            foreach ($matches[1] as $dateValue) {
+                $date = $this->createStrictDate('Y-m-d', $dateValue);
+                if ($date) {
+                    return $date;
+                }
             }
         }
 
         // 尝试匹配 YYYYMMDD 格式
-        if (preg_match('/(\d{8})/', $nameWithoutExt, $matches)) {
-            try {
-                return Carbon::createFromFormat('Ymd', $matches[1]);
-            } catch (Throwable $e) {
-                // 解析失败
+        if (preg_match_all('/(?<!\d)(\d{8})(?!\d)/', $nameWithoutExt, $matches)) {
+            foreach ($matches[1] as $dateValue) {
+                $date = $this->createStrictDate('Ymd', $dateValue);
+                if ($date) {
+                    return $date;
+                }
             }
         }
 
         return null;
+    }
+
+    protected function createStrictDate(string $format, string $value): ?Carbon
+    {
+        try {
+            $date = Carbon::createFromFormat('!'.$format, $value);
+        } catch (Throwable) {
+            return null;
+        }
+
+        if (!$date || $date->format($format) !== $value) {
+            return null;
+        }
+
+        return $date;
+    }
+
+    protected function looksLikeDateRangeFilename(string $filename): bool
+    {
+        $nameWithoutExt = pathinfo($filename, PATHINFO_FILENAME);
+
+        preg_match_all('/(?<!\d)(\d{4}-\d{2}-\d{2})(?!\d)/', $nameWithoutExt, $dashMatches);
+        preg_match_all('/(?<!\d)(\d{8})(?!\d)/', $nameWithoutExt, $compactMatches);
+
+        $validDates = [];
+        foreach ($dashMatches[1] as $dateValue) {
+            if ($this->createStrictDate('Y-m-d', $dateValue)) {
+                $validDates[] = $dateValue;
+            }
+        }
+
+        foreach ($compactMatches[1] as $dateValue) {
+            if ($this->createStrictDate('Ymd', $dateValue)) {
+                $validDates[] = $dateValue;
+            }
+        }
+
+        return count(array_unique($validDates)) >= 2;
     }
 
     /**

@@ -4,6 +4,12 @@ All notable changes to `laravel-payment-bill` will be documented in this file.
 
 ## [Unreleased]
 
+## [1.4.1] - 2026-06-22
+
+### Fixed
+- 修复日账单文件名解析会误将商户号中的 8 位数字归一化为异常账单日期的问题。
+- 日账单导入遇到疑似月账单日期范围文件名时，提示使用 `bill_period=month` 或 `--bill-period=month`。
+
 ## [1.4.0] - 2026-06-22
 
 ### Added
