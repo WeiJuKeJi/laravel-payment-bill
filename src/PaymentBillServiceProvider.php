@@ -98,7 +98,7 @@ class PaymentBillServiceProvider extends ServiceProvider
                 $importTimezone = config('payment-bill.schedules.import.timezone')
                     ?? config('app.timezone', 'Asia/Shanghai');
 
-                $schedule->command('payment-bill:import')
+                $schedule->command('payment-bill:import --bill-type=all')
                     ->dailyAt($importTime)
                     ->timezone($importTimezone)
                     ->withoutOverlapping()
@@ -113,7 +113,7 @@ class PaymentBillServiceProvider extends ServiceProvider
                     ?? config('app.timezone', 'Asia/Shanghai');
 
                 if (config('payment-bill.schedules.import.retry.enabled', true)) {
-                    $schedule->command("payment-bill:import --only-failed --from={$importRetryFrom} --to={$importRetryTo}")
+                    $schedule->command("payment-bill:import --bill-type=all --only-failed --from={$importRetryFrom} --to={$importRetryTo}")
                         ->cron('0 */'.$importRetryEveryHours.' * * *')
                         ->timezone($importRetryTimezone)
                         ->withoutOverlapping()

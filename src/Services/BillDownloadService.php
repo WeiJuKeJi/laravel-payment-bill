@@ -120,6 +120,45 @@ class BillDownloadService
             } catch (Throwable $exception) {
                 $normalizedMessage = $this->normalizeExceptionMessage($exception);
 
+                if ($this->isWechatNoStatement($channel, $normalizedMessage)) {
+                    $record->fill([
+                        'download_status' => BillDownload::DOWNLOAD_STATUS_COMPLETED,
+                        'download_error' => null,
+                        'download_completed_at' => now(),
+                        'file_path' => null,
+                        'bill_summary_transaction_count' => 0,
+                        'bill_summary_settlement_amount' => '0.00',
+                        'bill_summary_refund_amount' => '0.00',
+                        'bill_summary_refund_voucher_amount' => '0.00',
+                        'bill_summary_fee_amount' => '0.00',
+                        'bill_summary_order_amount' => '0.00',
+                        'bill_summary_refund_apply_amount' => '0.00',
+                        'import_status' => BillDownload::IMPORT_STATUS_COMPLETED,
+                        'import_error' => null,
+                        'import_started_at' => now(),
+                        'import_completed_at' => now(),
+                        'import_duration' => 0,
+                        'import_total_transaction_count' => 0,
+                        'import_total_new_count' => 0,
+                        'import_total_updated_count' => 0,
+                        'import_total_settlement_amount' => '0.00',
+                        'import_total_refund_amount' => '0.00',
+                        'import_total_refund_voucher_amount' => '0.00',
+                        'import_total_fee_amount' => '0.00',
+                        'import_total_order_amount' => '0.00',
+                        'import_total_refund_apply_amount' => '0.00',
+                    ])->save();
+
+                    Log::info('微信账单不存在，已按空账单完成处理', [
+                        'channel_id' => $channel->getKey(),
+                        'bill_date' => $date->toDateString(),
+                        'bill_type' => $normalizedType,
+                        'message' => $normalizedMessage,
+                    ]);
+
+                    return $record->fresh();
+                }
+
                 $record->fill([
                     'download_status' => $this->resolveFailureStatus($exception),
                     'download_error' => Str::limit($normalizedMessage, 2000),
@@ -366,6 +405,18 @@ class BillDownloadService
         }
 
         return sprintf('%s 未提供错误信息', get_class($throwable));
+    }
+
+    /**
+     * 微信在指定日期无账单时会返回 NO_STATEMENT_EXIST，此场景不应进入失败重试。
+     */
+    protected function isWechatNoStatement(PaymentChannel $channel, string $message): bool
+    {
+        if ($channel->channel !== 'wechat') {
+            return false;
+        }
+
+        return str_contains($message, 'NO_STATEMENT_EXIST');
     }
 
     /**

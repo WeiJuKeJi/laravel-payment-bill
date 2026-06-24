@@ -4,6 +4,12 @@ All notable changes to `laravel-payment-bill` will be documented in this file.
 
 ## [Unreleased]
 
+## [1.4.4] - 2026-06-24
+
+### Fixed
+- `payment-bill:import` 默认导入微信和支付宝账单，定时自动导入与失败重试同步使用 `--bill-type=all`，避免启用多渠道时支付宝账单被跳过且调度返回失败。
+- 微信返回 `NO_STATEMENT_EXIST` 时按空账单完成处理，避免无账单日期持续进入下载失败重试。
+
 ## [1.4.2] - 2026-06-22
 
 ### Fixed

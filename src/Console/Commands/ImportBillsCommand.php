@@ -23,7 +23,7 @@ class ImportBillsCommand extends Command
         {--to= : 导入结束日期，格式 Y-m-d，默认与开始日期相同}
         {--force : 强制重新导入，即使已完成}
         {--only-failed : 仅重试导入失败的记录}
-        {--bill-type=wechat : 导入的账单类型，可选 wechat|alipay|all}';
+        {--bill-type=all : 导入的账单类型，可选 wechat|alipay|all，默认全部}';
 
     protected $description = '将已下载的账单文件导入数据库，支持微信与支付宝账单的异步导入。';
 
@@ -59,7 +59,9 @@ class ImportBillsCommand extends Command
         };
 
         $dispatched = 0;
+        $filtered = 0;
         $skipped = 0;
+        $failed = 0;
 
         foreach ($dates as $date) {
             foreach ($channels as $channel) {
@@ -69,7 +71,7 @@ class ImportBillsCommand extends Command
                         $channel->name,
                         $channel->channel
                     ));
-                    ++$skipped;
+                    ++$filtered;
                     continue;
                 }
 
@@ -93,6 +95,17 @@ class ImportBillsCommand extends Command
                 }
 
                 foreach ($downloads as $download) {
+                    if (!$force && $download->import_status === BillDownload::IMPORT_STATUS_COMPLETED) {
+                        $this->line(sprintf(
+                            'ℹ️ 渠道 %s 日期 %s 记录 #%d 已导入，跳过。',
+                            $channel->name,
+                            $date->toDateString(),
+                            $download->getKey()
+                        ));
+                        ++$skipped;
+                        continue;
+                    }
+
                     try {
                         if ($channel->channel === 'wechat') {
                             $importService->dispatchWechatImport($download, $force);
@@ -118,15 +131,21 @@ class ImportBillsCommand extends Command
                             $download->getKey(),
                             $exception->getMessage()
                         ));
-                        ++$skipped;
+                        ++$failed;
                     }
                 }
             }
         }
 
-        $this->line(sprintf('完成：已派发 %d 条任务，跳过 %d 条。', $dispatched, $skipped));
+        $this->line(sprintf(
+            '完成：已派发 %d 条任务，过滤 %d 条，跳过 %d 条，失败 %d 条。',
+            $dispatched,
+            $filtered,
+            $skipped,
+            $failed
+        ));
 
-        return $skipped === 0 ? self::SUCCESS : self::FAILURE;
+        return $failed === 0 ? self::SUCCESS : self::FAILURE;
     }
 
     /**

@@ -705,6 +705,12 @@ php artisan payment-bill:download --force
 # 导入所有已下载但未导入的账单
 php artisan payment-bill:import
 
+# 仅导入微信账单
+php artisan payment-bill:import --bill-type=wechat
+
+# 仅导入支付宝账单
+php artisan payment-bill:import --bill-type=alipay
+
 # 指定日期
 php artisan payment-bill:import --date=2025-01-01
 
@@ -905,7 +911,7 @@ $ php artisan payment-bill:import-local-files --directory=/Users/oran/Downloads/
 | 任务 | 频率 | 说明 |
 |------|------|------|
 | 自动下载 | 每天 09:00 | 下载昨日所有启用渠道的账单 |
-| 自动导入 | 每天 09:30 | 导入昨日已下载的账单到数据库 |
+| 自动导入 | 每天 09:30 | 导入昨日已下载的微信和支付宝账单到数据库 |
 | 下载失败重试 | 每 2 小时 | 重试近 3 天内下载状态为 failed 的记录 |
 | 导入失败重试 | 每 2 小时 | 重试近 3 天内导入状态为 failed 的记录 |
 
