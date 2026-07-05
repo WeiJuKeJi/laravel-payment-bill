@@ -10,7 +10,7 @@
       "get": {
         "tags": ["PaymentBill/WechatBill"],
         "summary": "获取微信账单列表",
-        "description": "获取微信支付账单流水列表,支持按日期、商户号、交易类型等条件筛选\n\n**测试用例:**\n1. 默认分页查询: 按交易时间倒序\n2. 按日期范围筛选: `trade_time_start=2025-11-01T00:00:00&trade_time_end=2025-11-30T23:59:59`\n3. 按商户号筛选: `mch_id=1234567890`\n4. 按交易类型筛选: `trade_type=NATIVE`\n5. 按交易状态筛选: `trade_state=SUCCESS`\n6. 包含支付渠道信息: `with_channel=true`\n7. 升序排列: `order=asc`",
+        "description": "获取微信支付账单流水列表,支持按日期、微信订单号、商户订单号、交易类型等条件筛选\n\n**测试用例:**\n1. 默认分页查询: 按交易时间倒序\n2. 按日期范围筛选: `date_from=2025-11-01&date_to=2025-11-30`\n3. 按微信订单号筛选: `wechat_transaction_id=4200001234202511141234567890`\n4. 按商户订单号筛选: `out_trade_no=ORD202511140001`\n5. 按交易类型筛选: `trade_type=NATIVE`\n6. 按交易状态筛选: `trade_state=SUCCESS`\n7. 包含支付渠道信息: `with_channel=true`\n8. 升序排列: `order=asc`",
         "operationId": "getWechatBills",
         "security": [{ "bearerAuth": [] }],
         "parameters": [
@@ -22,25 +22,30 @@
             "example": "application/json"
           },
           {
-            "name": "trade_time_start",
+            "name": "date_from",
             "in": "query",
-            "description": "交易时间起始(ISO 8601)",
-            "schema": { "type": "string", "format": "date-time" }
+            "description": "交易日期起始，格式 Y-m-d",
+            "schema": { "type": "string", "format": "date" }
           },
           {
-            "name": "trade_time_end",
+            "name": "date_to",
             "in": "query",
-            "description": "交易时间结束(ISO 8601)",
-            "schema": { "type": "string", "format": "date-time" }
+            "description": "交易日期结束，格式 Y-m-d",
+            "schema": { "type": "string", "format": "date" }
           },
           {
-            "name": "mch_id",
+            "name": "payment_channel_id",
             "in": "query",
-            "description": "微信商户号",
-            "schema": { "type": "string" }
+            "description": "支付渠道 ID，支持单个 ID 或多个 ID",
+            "schema": {
+              "oneOf": [
+                { "type": "integer" },
+                { "type": "array", "items": { "type": "integer" } }
+              ]
+            }
           },
           {
-            "name": "transaction_id",
+            "name": "wechat_transaction_id",
             "in": "query",
             "description": "微信订单号",
             "schema": { "type": "string" }
@@ -110,7 +115,7 @@
                         "mch_id": "1234567890",
                         "sub_mch_id": "",
                         "device_info": "",
-                        "transaction_id": "4200001234202511141234567890",
+                        "wechat_transaction_id": "4200001234202511141234567890",
                         "out_trade_no": "ORD202511140001",
                         "openid": "oUpF8uMuAJO_M2pxb1Q9zNjWeS6o",
                         "trade_type": "NATIVE",
@@ -180,7 +185,7 @@
                     "trade_time": "2025-11-14T10:30:00.000Z",
                     "appid": "wx1234567890abcdef",
                     "mch_id": "1234567890",
-                    "transaction_id": "4200001234202511141234567890",
+                    "wechat_transaction_id": "4200001234202511141234567890",
                     "out_trade_no": "ORD202511140001",
                     "openid": "oUpF8uMuAJO_M2pxb1Q9zNjWeS6o",
                     "trade_type": "NATIVE",

@@ -169,8 +169,10 @@ class WechatBillFilter extends ModelFilter
 
     /**
      * 精确匹配微信交易号。
+     *
+     * EloquentFilter 会把 wechat_transaction_id 映射为 wechatTransaction。
      */
-    public function wechatTransactionId(string $transactionId): self
+    public function wechatTransaction(string $transactionId): self
     {
         $transactionId = trim($transactionId);
 
@@ -179,6 +181,14 @@ class WechatBillFilter extends ModelFilter
         }
 
         return $this->where('wechat_transaction_id', $transactionId);
+    }
+
+    /**
+     * 兼容显式驼峰方法调用。
+     */
+    public function wechatTransactionId(string $transactionId): self
+    {
+        return $this->wechatTransaction($transactionId);
     }
 
     /**
