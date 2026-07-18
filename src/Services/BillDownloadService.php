@@ -64,7 +64,10 @@ class BillDownloadService
         $record = DB::transaction(function () use ($channel, $date, $normalizedType, $options, $force, &$failure) {
             $record = $this->prepareRecord($channel, $date, $normalizedType, $force);
 
-            if ($record->download_status === BillDownload::DOWNLOAD_STATUS_COMPLETED && ! $force) {
+            if (in_array($record->download_status, [
+                BillDownload::DOWNLOAD_STATUS_COMPLETED,
+                BillDownload::DOWNLOAD_STATUS_NO_STATEMENT,
+            ], true) && ! $force) {
                 return $record;
             }
 
@@ -122,7 +125,7 @@ class BillDownloadService
 
                 if ($this->isWechatNoStatement($channel, $normalizedMessage)) {
                     $record->fill([
-                        'download_status' => BillDownload::DOWNLOAD_STATUS_COMPLETED,
+                        'download_status' => BillDownload::DOWNLOAD_STATUS_NO_STATEMENT,
                         'download_error' => null,
                         'download_completed_at' => now(),
                         'file_path' => null,

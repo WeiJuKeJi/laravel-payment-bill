@@ -230,15 +230,7 @@ class WechatBillImporter
      */
     private function persistRow(array $formattedRow): void
     {
-        $unique = [
-            'payment_channel_id' => $formattedRow['payment_channel_id'],
-            'trade_time' => $formattedRow['trade_time'],
-            'out_trade_no' => $formattedRow['out_trade_no'],
-        ];
-
-        if (!empty($formattedRow['wechat_transaction_id'])) {
-            $unique['wechat_transaction_id'] = $formattedRow['wechat_transaction_id'];
-        }
+        $unique = $this->resolveUniqueAttributes($formattedRow);
 
         /** @var WechatBill $bill */
         $bill = WechatBill::updateOrCreate($unique, $formattedRow);
@@ -248,6 +240,72 @@ class WechatBillImporter
         } else {
             $this->importTotals['import_total_updated_count']++;
         }
+    }
+
+    /**
+     * 生成账单流水的幂等匹配条件。
+     *
+     * 同一支付订单可能在同一秒产生多笔退款，退款流水必须使用退款单号区分，
+     * 不能继续使用支付订单号和交易时间作为唯一标识。
+     *
+     * @param  array<string, mixed>  $formattedRow
+     * @return array<string, mixed>
+     */
+    private function resolveUniqueAttributes(array $formattedRow): array
+    {
+        $paymentChannelId = $formattedRow['payment_channel_id'];
+        $wechatRefundNo = $this->normalizeIdentityValue($formattedRow['wechat_refund_no'] ?? null);
+        $outRefundNo = $this->normalizeIdentityValue($formattedRow['out_refund_no'] ?? null);
+
+        if ($wechatRefundNo !== null) {
+            return [
+                'payment_channel_id' => $paymentChannelId,
+                'wechat_refund_no' => $wechatRefundNo,
+            ];
+        }
+
+        if ($outRefundNo !== null) {
+            return [
+                'payment_channel_id' => $paymentChannelId,
+                'out_refund_no' => $outRefundNo,
+            ];
+        }
+
+        $unique = [
+            'payment_channel_id' => $paymentChannelId,
+            'trade_time' => $formattedRow['trade_time'],
+            'out_trade_no' => $formattedRow['out_trade_no'],
+        ];
+
+        $wechatTransactionId = $this->normalizeIdentityValue($formattedRow['wechat_transaction_id'] ?? null);
+        if ($wechatTransactionId !== null) {
+            $unique['wechat_transaction_id'] = $wechatTransactionId;
+        }
+
+        // 极少数异常退款行没有任何退款单号，追加退款属性以降低互相覆盖风险。
+        if ($this->isRefundRow($formattedRow)) {
+            $unique['refund_amount'] = $formattedRow['refund_amount'] ?? '0.00';
+            $unique['refund_apply_amount'] = $formattedRow['refund_apply_amount'] ?? '0.00';
+            $unique['refund_status'] = $formattedRow['refund_status'] ?? null;
+        }
+
+        return $unique;
+    }
+
+    private function normalizeIdentityValue(mixed $value): ?string
+    {
+        $normalized = trim((string) $value);
+
+        return in_array($normalized, ['', '0', '-'], true) ? null : $normalized;
+    }
+
+    /**
+     * @param  array<string, mixed>  $formattedRow
+     */
+    private function isRefundRow(array $formattedRow): bool
+    {
+        return bccomp((string) ($formattedRow['refund_amount'] ?? '0'), '0', 2) !== 0
+            || bccomp((string) ($formattedRow['refund_apply_amount'] ?? '0'), '0', 2) !== 0;
     }
 
     /**

@@ -7,6 +7,7 @@ use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Storage;
 use InvalidArgumentException;
+use WeiJuKeJi\PaymentBill\Http\Requests\BillDownload\BillDownloadCalendarStatsRequest;
 use WeiJuKeJi\PaymentBill\Http\Requests\BillDownload\BillDownloadCalendarRequest;
 use WeiJuKeJi\PaymentBill\Http\Requests\BillDownload\BillDownloadFilterRequest;
 use WeiJuKeJi\PaymentBill\Http\Requests\BillDownload\BillDownloadStoreRequest;
@@ -91,6 +92,70 @@ class BillDownloadController extends Controller
         ]);
     }
 
+    /**
+     * 一次返回全部支付渠道的年度下载状态统计，供日历左侧渠道列表使用。
+     */
+    public function calendarStats(BillDownloadCalendarStatsRequest $request): JsonResponse
+    {
+        $year = (int) $request->validated('year');
+        $startDate = sprintf('%d-01-01', $year);
+        $endDate = sprintf('%d-12-31', $year);
+
+        $records = BillDownload::query()
+            ->select(['payment_channel_id', 'bill_date', 'download_status'])
+            ->whereBetween('bill_date', [$startDate, $endDate])
+            ->get();
+
+        $priority = [
+            BillDownload::DOWNLOAD_STATUS_FAILED => 0,
+            BillDownload::DOWNLOAD_STATUS_PROCESSING => 1,
+            BillDownload::DOWNLOAD_STATUS_PENDING => 2,
+            BillDownload::DOWNLOAD_STATUS_NO_STATEMENT => 3,
+            BillDownload::DOWNLOAD_STATUS_COMPLETED => 4,
+        ];
+
+        $emptyStats = [
+            BillDownload::DOWNLOAD_STATUS_COMPLETED => 0,
+            BillDownload::DOWNLOAD_STATUS_FAILED => 0,
+            BillDownload::DOWNLOAD_STATUS_PROCESSING => 0,
+            BillDownload::DOWNLOAD_STATUS_PENDING => 0,
+            BillDownload::DOWNLOAD_STATUS_NO_STATEMENT => 0,
+        ];
+
+        $channels = PaymentChannel::query()
+            ->pluck('id')
+            ->mapWithKeys(fn ($channelId) => [(string) $channelId => $emptyStats])
+            ->all();
+
+        $recordStats = $records
+            ->groupBy('payment_channel_id')
+            ->map(function (Collection $channelRecords) use ($emptyStats, $priority): array {
+                $stats = $emptyStats;
+
+                $channelRecords
+                    ->groupBy(fn (BillDownload $record) => $record->bill_date?->toDateString())
+                    ->each(function (Collection $dateRecords) use (&$stats, $priority): void {
+                        $status = $dateRecords
+                            ->sortBy(fn (BillDownload $record) => $priority[$record->download_status] ?? 99)
+                            ->first()
+                            ?->download_status;
+
+                        if ($status !== null && array_key_exists($status, $stats)) {
+                            $stats[$status]++;
+                        }
+                    });
+
+                return $stats;
+            })
+            ->all();
+
+        foreach ($recordStats as $channelId => $stats) {
+            $channels[(string) $channelId] = $stats;
+        }
+
+        return $this->success(['year' => $year, 'channels' => $channels]);
+    }
+
     public function store(BillDownloadStoreRequest $request): JsonResponse
     {
         $data = $request->validated();
@@ -149,7 +214,8 @@ class BillDownloadController extends Controller
             BillDownload::DOWNLOAD_STATUS_FAILED => 0,
             BillDownload::DOWNLOAD_STATUS_PROCESSING => 1,
             BillDownload::DOWNLOAD_STATUS_PENDING => 2,
-            BillDownload::DOWNLOAD_STATUS_COMPLETED => 3,
+            BillDownload::DOWNLOAD_STATUS_NO_STATEMENT => 3,
+            BillDownload::DOWNLOAD_STATUS_COMPLETED => 4,
         ];
 
         return $records
@@ -168,6 +234,7 @@ class BillDownloadController extends Controller
             BillDownload::DOWNLOAD_STATUS_FAILED => 0,
             BillDownload::DOWNLOAD_STATUS_PROCESSING => 0,
             BillDownload::DOWNLOAD_STATUS_PENDING => 0,
+            BillDownload::DOWNLOAD_STATUS_NO_STATEMENT => 0,
             'missing' => 0,
         ];
 

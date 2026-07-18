@@ -12,19 +12,26 @@ use WeiJuKeJi\PaymentBill\Http\Requests\AlipayBill\AlipayBillFilterRequest;
 use WeiJuKeJi\PaymentBill\Http\Requests\Reconciliation\ReconciliationRequest;
 use WeiJuKeJi\PaymentBill\Http\Resources\AlipayBillResource;
 use WeiJuKeJi\PaymentBill\Models\AlipayBill;
+use WeiJuKeJi\PaymentBill\Support\ResolvesBillProjects;
 
 class AlipayBillController extends Controller
 {
+    use ResolvesBillProjects;
+
     public function index(AlipayBillFilterRequest $request): JsonResponse
     {
         $filters = $request->validated();
         $order = Arr::pull($filters, 'order', 'desc');
         $withChannel = (bool) Arr::pull($filters, 'with_channel', false);
+        $projectId = Arr::pull($filters, 'project_id');
+        $hasProject = Arr::pull($filters, 'has_project');
         $perPage = $this->resolvePerPage($filters, 20, 500);
 
         $direction = $order === 'asc' ? 'asc' : 'desc';
 
-        $query = AlipayBill::query()->filter($filters);
+        $query = AlipayBill::query();
+        $this->applyResolvedProjectFilters($query, $projectId, $hasProject);
+        $query->filter($filters);
 
         if ($withChannel) {
             $query->with('paymentChannel');
@@ -49,6 +56,7 @@ class AlipayBillController extends Controller
             ->orderBy('id', $direction);
 
         $paginator = $query->paginate($perPage);
+        $this->attachResolvedProjects($paginator->getCollection());
 
         return $this->respondWithPaginationAndSummary($paginator, $summary, AlipayBillResource::class);
     }
@@ -83,6 +91,8 @@ class AlipayBillController extends Controller
             $alipayBill->loadMissing('paymentChannel');
         }
 
+        $this->attachResolvedProjects(collect([$alipayBill]));
+
         return $this->respondWithResource($alipayBill, AlipayBillResource::class);
     }
 
@@ -98,7 +108,7 @@ class AlipayBillController extends Controller
         }
 
         $alipayBill->markAsMatched(
-            businessId: $data['business_id'],
+            business: $data['business_id'],
             amountDiff: $data['amount_diff'] ?? 0.00,
             reconciledBy: $this->getReconciledBy($request),
             remark: $data['remark'] ?? null
@@ -123,7 +133,7 @@ class AlipayBillController extends Controller
         }
 
         $alipayBill->markAsMismatched(
-            businessId: $data['business_id'],
+            business: $data['business_id'],
             amountDiff: $data['amount_diff'],
             remark: $data['remark'],
             reconciledBy: $this->getReconciledBy($request)
@@ -142,7 +152,7 @@ class AlipayBillController extends Controller
         $alipayBill->markAsManual(
             remark: $data['remark'],
             reconciledBy: $this->getReconciledBy($request),
-            businessId: $data['business_id'] ?? null
+            business: $data['business_id'] ?? null
         );
 
         return $this->respondWithResource($alipayBill->fresh(), AlipayBillResource::class);

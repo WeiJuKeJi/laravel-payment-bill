@@ -1,5 +1,7 @@
 <?php
 
+use WeiJuKeJi\PaymentBill\Enums\ReconciliationStatusEnum;
+
 return [
     /*
     |--------------------------------------------------------------------------
@@ -75,6 +77,15 @@ return [
     */
     'guard' => 'sanctum',
 
+    // 可选：由业务项目提供账单归属项目批量解析器，需实现 resolve(Collection $bills): array。
+    'project_resolver' => null,
+
+    // 历史数据完成回填并核对后再开启；关闭时项目筛选继续使用业务解析器。
+    'project_cache_filtering_enabled' => env('PAYMENT_BILL_PROJECT_CACHE_FILTERING_ENABLED', false),
+
+    // 微信账单关键词搜索驱动：ilike（兼容）或 zhparser（中文全文索引）。
+    'wechat_keyword_search_driver' => env('PAYMENT_BILL_WECHAT_KEYWORD_SEARCH_DRIVER', 'ilike'),
+
     /*
     |--------------------------------------------------------------------------
     | 定时任务配置
@@ -124,7 +135,7 @@ return [
     */
     'enums' => [
         // 对账状态枚举
-        'reconciliation_status' => \WeiJuKeJi\PaymentBill\Enums\ReconciliationStatusEnum::class,
+        'reconciliation_status' => ReconciliationStatusEnum::class,
     ],
 
     /*

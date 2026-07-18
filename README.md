@@ -915,6 +915,8 @@ $ php artisan payment-bill:import-local-files --directory=/Users/oran/Downloads/
 | 下载失败重试 | 每 2 小时 | 重试近 3 天内下载状态为 failed 的记录 |
 | 导入失败重试 | 每 2 小时 | 重试近 3 天内导入状态为 failed 的记录 |
 
+下载状态包括：`pending`（待下载）、`processing`（下载中）、`completed`（已下载）、`no_statement`（支付平台确认当日无账单）和 `failed`（下载失败）。其中 `no_statement` 是无需导入、不会进入下载失败重试的终态；微信返回 `NO_STATEMENT_EXIST` 时会写入该状态。
+
 重试任务的追溯天数和间隔可通过配置文件调整：
 
 ```php
@@ -962,6 +964,9 @@ $ php artisan payment-bill:import-local-files --directory=/Users/oran/Downloads/
 ### payment_bill_downloads
 
 账单下载记录表，跟踪账单下载和导入状态。
+
+- `download_status` - 下载状态（pending/processing/completed/no_statement/failed）
+- `no_statement` 表示支付平台已明确确认当日没有账单文件，不等同于接口异常或尚未创建下载记录
 
 ### payment_bill_wechat_bills
 

@@ -21,6 +21,8 @@ class BillDownload extends Model
 
     public const DOWNLOAD_STATUS_COMPLETED = 'completed';
 
+    public const DOWNLOAD_STATUS_NO_STATEMENT = 'no_statement';
+
     public const DOWNLOAD_STATUS_FAILED = 'failed';
 
     public const IMPORT_STATUS_PENDING = 'pending';
@@ -129,6 +131,7 @@ class BillDownload extends Model
             self::DOWNLOAD_STATUS_PENDING => '待下载',
             self::DOWNLOAD_STATUS_PROCESSING => '下载中',
             self::DOWNLOAD_STATUS_COMPLETED => '已完成',
+            self::DOWNLOAD_STATUS_NO_STATEMENT => '当日无账单',
             self::DOWNLOAD_STATUS_FAILED => '下载失败',
             default => $this->download_status,
         };

@@ -218,12 +218,20 @@ class WechatBillFilter extends ModelFilter
 
         $like = sprintf('%%%s%%', $keywords);
 
-        return $this->where(function ($query) use ($like) {
-            $query->where('wechat_transaction_id', 'ilike', $like)
-                ->orWhere('out_trade_no', 'ilike', $like)
-                ->orWhere('user_open_id', 'ilike', $like)
-                ->orWhere('goods_name', 'ilike', $like)
-                ->orWhere('goods_info', 'ilike', $like);
+        return $this->where(function ($query) use ($keywords, $like): void {
+            $query->where('wechat_transaction_id', $keywords)
+                ->orWhere('out_trade_no', $keywords)
+                ->orWhere('user_open_id', $keywords);
+
+            if (config('payment-bill.wechat_keyword_search_driver', 'ilike') === 'zhparser') {
+                $query->orWhereRaw(
+                    "to_tsvector('payment_bill_zh', COALESCE(goods_name, '') || ' ' || COALESCE(goods_info, '')) @@ plainto_tsquery('payment_bill_zh', ?)",
+                    [$keywords]
+                );
+            } else {
+                $query->orWhere('goods_name', 'ilike', $like)
+                    ->orWhere('goods_info', 'ilike', $like);
+            }
         });
     }
 

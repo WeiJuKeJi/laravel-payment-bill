@@ -4,11 +4,31 @@ All notable changes to `laravel-payment-bill` will be documented in this file.
 
 ## [Unreleased]
 
+## [1.5.0] - 2026-07-18
+
+### Added
+- 新增账单下载状态 `no_statement`，用于表示支付平台明确确认指定日期没有账单文件。
+- 新增年度账单下载渠道统计接口 `bill-download-calendar-stats`，一次返回全部支付渠道的状态数量，避免日历切换年份时逐渠道请求。
+- 微信、支付宝账单新增无外键的 `resolved_project_id` 项目归属缓存字段与索引。
+- 微信账单商品名称、商品信息新增独立 pg_trgm GIN 索引，用户标识新增 B-tree 索引。
+- PostgreSQL 安装 zhparser 时可创建中文全文搜索配置和 GIN 索引。
+
+### Changed
+- 微信返回 `NO_STATEMENT_EXIST` 时记录为“当日无账单”终态，与正常完成和真正下载失败区分，并保持不进入失败重试。
+- `project_id`、`has_project` 筛选在缓存字段可用时改为单表索引查询；未迁移环境继续回退应用提供的项目解析器。
+- 对账 Concern 支持调用应用项目解析器写入或清空项目归属缓存。
+- 新增 `PAYMENT_BILL_PROJECT_CACHE_FILTERING_ENABLED` 开关，历史回填核对完成后才启用缓存筛选。
+- 微信账单 `keywords` 对交易号、商户订单号、用户标识使用精确匹配，对商品名称和商品信息保留前后模糊匹配，分别命中 B-tree 与 GIN 索引。
+- 新增 `PAYMENT_BILL_WECHAT_KEYWORD_SEARCH_DRIVER=zhparser` 中文搜索模式，默认 `ilike` 保持其他环境兼容。
+
+### Fixed
+- 微信退款流水优先使用微信退款单号、其次使用商户退款单号作为导入幂等键，避免同一支付订单在同一秒发生多笔退款时互相覆盖。
+
 ## [1.4.4] - 2026-06-24
 
 ### Fixed
 - `payment-bill:import` 默认导入微信和支付宝账单，定时自动导入与失败重试同步使用 `--bill-type=all`，避免启用多渠道时支付宝账单被跳过且调度返回失败。
-- 微信返回 `NO_STATEMENT_EXIST` 时按空账单完成处理，避免无账单日期持续进入下载失败重试。
+- 微信返回 `NO_STATEMENT_EXIST` 时按空账单完成处理，避免无账单日期持续进入下载失败重试；该版本仍使用 `completed` 状态表示空账单。
 
 ## [1.4.2] - 2026-06-22
 

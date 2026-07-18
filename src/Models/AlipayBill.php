@@ -8,14 +8,15 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use WeiJuKeJi\PaymentBill\Concerns\Reconcilable;
+use WeiJuKeJi\PaymentBill\ModelFilters\AlipayBillFilter;
 
 /**
  * 支付宝账单明细模型。
  */
 class AlipayBill extends Model
 {
-    use HasFactory;
     use Filterable;
+    use HasFactory;
     use Reconcilable;
 
     protected $table = 'payment_bill_alipay_bills';
@@ -55,6 +56,7 @@ class AlipayBill extends Model
         'reconciliation_status',
         'business_type',
         'business_id',
+        'resolved_project_id',
         'reconciled_at',
         'reconciliation_amount_diff',
         'reconciliation_remark',
@@ -81,6 +83,7 @@ class AlipayBill extends Model
         'profit_sharing_amount' => 'decimal:2',
         // 对账相关字段
         'reconciled_at' => 'datetime',
+        'resolved_project_id' => 'integer',
         'reconciliation_amount_diff' => 'decimal:2',
     ];
 
@@ -105,6 +108,6 @@ class AlipayBill extends Model
      */
     public function modelFilter()
     {
-        return $this->provideFilter(\WeiJuKeJi\PaymentBill\ModelFilters\AlipayBillFilter::class);
+        return $this->provideFilter(AlipayBillFilter::class);
     }
 }

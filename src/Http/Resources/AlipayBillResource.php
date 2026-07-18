@@ -54,6 +54,7 @@ class AlipayBillResource extends JsonResource
             'coupon_name' => $this->coupon_name,
             'refund_request_no' => $this->refund_request_no,
             'remark' => $this->remark,
+            'project' => $this->getAttribute('resolved_project'),
             'reconciliation' => $this->formatReconciliation(),
             'created_at' => $this->created_at?->toDateTimeString(),
             'updated_at' => $this->updated_at?->toDateTimeString(),
@@ -82,4 +83,3 @@ class AlipayBillResource extends JsonResource
         ];
     }
 }
-

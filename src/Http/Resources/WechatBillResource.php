@@ -56,6 +56,7 @@ class WechatBillResource extends JsonResource
             ],
             'goods_name' => $this->goods_name,
             'goods_info' => $this->goods_info,
+            'project' => $this->getAttribute('resolved_project'),
             'reconciliation' => $this->formatReconciliation(),
             'created_at' => $this->created_at?->toDateTimeString(),
             'updated_at' => $this->updated_at?->toDateTimeString(),
@@ -84,4 +85,3 @@ class WechatBillResource extends JsonResource
         ];
     }
 }
-

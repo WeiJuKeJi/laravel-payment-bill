@@ -8,14 +8,15 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use WeiJuKeJi\PaymentBill\Concerns\Reconcilable;
+use WeiJuKeJi\PaymentBill\ModelFilters\WechatBillFilter;
 
 /**
  * 微信账单明细模型。
  */
 class WechatBill extends Model
 {
-    use HasFactory;
     use Filterable;
+    use HasFactory;
     use Reconcilable;
 
     protected $table = 'payment_bill_wechat_bills';
@@ -55,6 +56,7 @@ class WechatBill extends Model
         'reconciliation_status',
         'business_type',
         'business_id',
+        'resolved_project_id',
         'reconciled_at',
         'reconciliation_amount_diff',
         'reconciliation_remark',
@@ -75,6 +77,7 @@ class WechatBill extends Model
         'refund_apply_amount' => 'decimal:2',
         // 对账相关字段
         'reconciled_at' => 'datetime',
+        'resolved_project_id' => 'integer',
         'reconciliation_amount_diff' => 'decimal:2',
     ];
 
@@ -99,6 +102,6 @@ class WechatBill extends Model
      */
     public function modelFilter()
     {
-        return $this->provideFilter(\WeiJuKeJi\PaymentBill\ModelFilters\WechatBillFilter::class);
+        return $this->provideFilter(WechatBillFilter::class);
     }
 }

@@ -51,10 +51,10 @@
           {
             "name": "download_status",
             "in": "query",
-            "description": "下载状态",
+            "description": "下载状态：pending-待下载，processing-下载中，completed-已下载，no_statement-支付平台确认当日无账单，failed-下载失败",
             "schema": {
               "type": "string",
-              "enum": ["pending", "processing", "completed", "failed"]
+              "enum": ["pending", "processing", "completed", "no_statement", "failed"]
             }
           },
           {
@@ -640,6 +640,110 @@
               }
             }
           }
+        }
+      }
+    },
+    "/payment-bill/bill-download-calendar": {
+      "get": {
+        "tags": ["PaymentBill/BillDownload"],
+        "summary": "获取账单下载日历",
+        "description": "按支付渠道和年份获取账单下载日历、年度状态统计和月度金额汇总。`no_statement` 表示支付平台明确确认当日无账单，`missing` 表示该日期没有下载记录。\n\n**测试用例:**\n1. 查询微信渠道年度日历\n2. 返回 no_statement 当日无账单状态\n3. 按 bill_type 筛选账单类型",
+        "operationId": "getBillDownloadCalendar",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "Accept",
+            "in": "header",
+            "required": true,
+            "schema": { "type": "string" },
+            "example": "application/json"
+          },
+          {
+            "name": "payment_channel_id",
+            "in": "query",
+            "required": true,
+            "description": "支付渠道 ID",
+            "schema": { "type": "integer" }
+          },
+          {
+            "name": "year",
+            "in": "query",
+            "required": true,
+            "description": "查询年份，范围 2000-2100",
+            "schema": { "type": "integer", "minimum": 2000, "maximum": 2100 }
+          },
+          {
+            "name": "bill_type",
+            "in": "query",
+            "required": false,
+            "description": "账单类型，不传时查询全部类型",
+            "schema": { "type": "string", "nullable": true }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": { "type": "integer", "description": "业务状态码，200 表示成功" },
+                    "msg": { "type": "string", "description": "接口响应消息" },
+                    "data": {
+                      "type": "object",
+                      "description": "账单下载日历数据",
+                      "properties": {
+                        "year": { "type": "integer", "description": "查询年份" },
+                        "payment_channel_id": { "type": "integer", "description": "支付渠道 ID" },
+                        "channel": { "type": "object", "nullable": true, "description": "支付渠道摘要" },
+                        "stats": {
+                          "type": "object",
+                          "description": "年度下载状态数量统计",
+                          "properties": {
+                            "pending": { "type": "integer", "description": "待下载日期数量" },
+                            "processing": { "type": "integer", "description": "下载中日期数量" },
+                            "completed": { "type": "integer", "description": "成功下载日期数量" },
+                            "no_statement": { "type": "integer", "description": "支付平台确认当日无账单的日期数量" },
+                            "failed": { "type": "integer", "description": "下载失败日期数量" },
+                            "missing": { "type": "integer", "description": "没有下载记录的日期数量" }
+                          }
+                        },
+                        "monthly_totals": { "type": "object", "description": "按月份索引的订单、退款、结算和手续费金额汇总" },
+                        "days": {
+                          "type": "object",
+                          "description": "按 YYYY-MM-DD 日期索引的账单下载记录；download_status 可能为 no_statement"
+                        }
+                      }
+                    }
+                  }
+                },
+                "example": {
+                  "code": 200,
+                  "msg": "success",
+                  "data": {
+                    "year": 2026,
+                    "payment_channel_id": 1,
+                    "channel": { "id": 1, "name": "微信支付", "channel": "wechat", "mode": "normal" },
+                    "stats": { "pending": 0, "processing": 0, "completed": 120, "no_statement": 3, "failed": 1, "missing": 241 },
+                    "monthly_totals": { "06": { "order_amount": "1347.23", "refund_amount": "1347.10", "settlement_amount": "0.13", "fee_amount": "0.00" } },
+                    "days": {
+                      "2026-06-21": {
+                        "id": 1216,
+                        "bill_date": "2026-06-21",
+                        "download_status": "no_statement",
+                        "import_status": "completed",
+                        "download_error": null,
+                        "file_path": null
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "422": { "$ref": "#/components/responses/ValidationError" }
         }
       }
     }

@@ -12,19 +12,26 @@ use WeiJuKeJi\PaymentBill\Http\Requests\Reconciliation\ReconciliationRequest;
 use WeiJuKeJi\PaymentBill\Http\Requests\WechatBill\WechatBillFilterRequest;
 use WeiJuKeJi\PaymentBill\Http\Resources\WechatBillResource;
 use WeiJuKeJi\PaymentBill\Models\WechatBill;
+use WeiJuKeJi\PaymentBill\Support\ResolvesBillProjects;
 
 class WechatBillController extends Controller
 {
+    use ResolvesBillProjects;
+
     public function index(WechatBillFilterRequest $request): JsonResponse
     {
         $filters = $request->validated();
         $order = Arr::pull($filters, 'order', 'desc');
         $withChannel = (bool) Arr::pull($filters, 'with_channel', false);
+        $projectId = Arr::pull($filters, 'project_id');
+        $hasProject = Arr::pull($filters, 'has_project');
         $perPage = $this->resolvePerPage($filters, 20, 500);
 
         $direction = $order === 'asc' ? 'asc' : 'desc';
 
-        $query = WechatBill::query()->filter($filters);
+        $query = WechatBill::query();
+        $this->applyResolvedProjectFilters($query, $projectId, $hasProject);
+        $query->filter($filters);
 
         if ($withChannel) {
             $query->with('paymentChannel');
@@ -51,6 +58,7 @@ class WechatBillController extends Controller
             ->orderBy('id', $direction);
 
         $paginator = $query->paginate($perPage);
+        $this->attachResolvedProjects($paginator->getCollection());
 
         return $this->respondWithPaginationAndSummary($paginator, $summary, WechatBillResource::class);
     }
@@ -85,6 +93,8 @@ class WechatBillController extends Controller
             $wechatBill->loadMissing('paymentChannel');
         }
 
+        $this->attachResolvedProjects(collect([$wechatBill]));
+
         return $this->respondWithResource($wechatBill, WechatBillResource::class);
     }
 
@@ -100,7 +110,7 @@ class WechatBillController extends Controller
         }
 
         $wechatBill->markAsMatched(
-            businessId: $data['business_id'],
+            business: $data['business_id'],
             amountDiff: $data['amount_diff'] ?? 0.00,
             reconciledBy: $this->getReconciledBy($request),
             remark: $data['remark'] ?? null
@@ -125,7 +135,7 @@ class WechatBillController extends Controller
         }
 
         $wechatBill->markAsMismatched(
-            businessId: $data['business_id'],
+            business: $data['business_id'],
             amountDiff: $data['amount_diff'],
             remark: $data['remark'],
             reconciledBy: $this->getReconciledBy($request)
@@ -144,7 +154,7 @@ class WechatBillController extends Controller
         $wechatBill->markAsManual(
             remark: $data['remark'],
             reconciledBy: $this->getReconciledBy($request),
-            businessId: $data['business_id'] ?? null
+            business: $data['business_id'] ?? null
         );
 
         return $this->respondWithResource($wechatBill->fresh(), WechatBillResource::class);

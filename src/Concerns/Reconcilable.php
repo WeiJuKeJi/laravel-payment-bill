@@ -3,10 +3,14 @@
 namespace WeiJuKeJi\PaymentBill\Concerns;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Schema;
 use WeiJuKeJi\PaymentBill\Enums\ReconciliationStatusEnum;
 
 trait Reconcilable
 {
+    /** @var array<string, bool> */
+    protected static array $resolvedProjectColumnAvailability = [];
+
     /**
      * 标记为已匹配
      */
@@ -16,12 +20,13 @@ trait Reconcilable
         ?string $reconciledBy = 'system',
         ?string $remark = null
     ): bool {
-        [$businessType, $businessId] = $this->resolveBusinessReference($business);
+        [$businessType, $businessId, $resolvedProjectId] = $this->resolveBusinessReference($business);
 
         return $this->updateReconciliation(
             status: ReconciliationStatusEnum::MATCHED->value,
             businessType: $businessType,
             businessId: $businessId,
+            resolvedProjectId: $resolvedProjectId,
             amountDiff: $amountDiff,
             reconciledBy: $reconciledBy,
             remark: $remark
@@ -37,12 +42,13 @@ trait Reconcilable
         string $remark,
         ?string $reconciledBy = 'system'
     ): bool {
-        [$businessType, $businessId] = $this->resolveBusinessReference($business);
+        [$businessType, $businessId, $resolvedProjectId] = $this->resolveBusinessReference($business);
 
         return $this->updateReconciliation(
             status: ReconciliationStatusEnum::MISMATCH->value,
             businessType: $businessType,
             businessId: $businessId,
+            resolvedProjectId: $resolvedProjectId,
             amountDiff: $amountDiff,
             reconciledBy: $reconciledBy,
             remark: $remark
@@ -57,14 +63,15 @@ trait Reconcilable
         string $reconciledBy,
         Model|int|null $business = null
     ): bool {
-        [$businessType, $businessId] = $business !== null
+        [$businessType, $businessId, $resolvedProjectId] = $business !== null
             ? $this->resolveBusinessReference($business)
-            : [null, null];
+            : [null, null, null];
 
         return $this->updateReconciliation(
             status: ReconciliationStatusEnum::MANUAL->value,
             businessType: $businessType,
             businessId: $businessId,
+            resolvedProjectId: $resolvedProjectId,
             reconciledBy: $reconciledBy,
             remark: $remark
         );
@@ -89,7 +96,7 @@ trait Reconcilable
      */
     public function markAsPending(): bool
     {
-        return $this->update([
+        $attributes = [
             'reconciliation_status' => ReconciliationStatusEnum::PENDING->value,
             'business_type' => null,
             'business_id' => null,
@@ -97,7 +104,13 @@ trait Reconcilable
             'reconciliation_amount_diff' => 0,
             'reconciliation_remark' => null,
             'reconciled_by' => null,
-        ]);
+        ];
+
+        if ($this->hasResolvedProjectColumn()) {
+            $attributes['resolved_project_id'] = null;
+        }
+
+        return $this->update($attributes);
     }
 
     /**
@@ -106,10 +119,14 @@ trait Reconcilable
     protected function resolveBusinessReference(Model|int $business): array
     {
         if ($business instanceof Model) {
-            return [get_class($business), $business->getKey()];
+            return [
+                get_class($business),
+                $business->getKey(),
+                $this->resolveBusinessProjectId($business),
+            ];
         }
 
-        return [null, $business];
+        return [null, $business, null];
     }
 
     /**
@@ -119,11 +136,12 @@ trait Reconcilable
         string $status,
         ?string $businessType = null,
         ?int $businessId = null,
+        ?int $resolvedProjectId = null,
         float $amountDiff = 0.00,
         ?string $reconciledBy = null,
         ?string $remark = null
     ): bool {
-        return $this->update([
+        $attributes = [
             'reconciliation_status' => $status,
             'business_type' => $businessType,
             'business_id' => $businessId,
@@ -131,7 +149,39 @@ trait Reconcilable
             'reconciliation_amount_diff' => $amountDiff,
             'reconciliation_remark' => $remark,
             'reconciled_by' => $reconciledBy,
-        ]);
+        ];
+
+        if ($this->hasResolvedProjectColumn()) {
+            $attributes['resolved_project_id'] = $resolvedProjectId;
+        }
+
+        return $this->update($attributes);
+    }
+
+    protected function resolveBusinessProjectId(Model $business): ?int
+    {
+        $resolverClass = config('payment-bill.project_resolver');
+
+        if (! is_string($resolverClass) || $resolverClass === '' || ! class_exists($resolverClass)) {
+            return null;
+        }
+
+        $resolver = app($resolverClass);
+        if (! method_exists($resolver, 'resolveBusinessProjectId')) {
+            return null;
+        }
+
+        $projectId = $resolver->resolveBusinessProjectId($business);
+
+        return filled($projectId) ? (int) $projectId : null;
+    }
+
+    protected function hasResolvedProjectColumn(): bool
+    {
+        $cacheKey = $this->getConnectionName().'|'.$this->getTable();
+
+        return self::$resolvedProjectColumnAvailability[$cacheKey]
+            ??= Schema::connection($this->getConnectionName())->hasColumn($this->getTable(), 'resolved_project_id');
     }
 
     /**

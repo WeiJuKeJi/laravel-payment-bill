@@ -29,6 +29,8 @@ class AlipayBillFilterRequest extends FormRequest
             'alipay_trade_no' => ['sometimes', 'nullable', 'string'],
             'merchant_order_no' => ['sometimes', 'nullable', 'string'],
             'keywords' => ['sometimes', 'nullable', 'string'],
+            'project_id' => ['sometimes', 'nullable', 'integer'],
+            'has_project' => ['sometimes', 'nullable', 'boolean'],
             'order' => ['sometimes', 'nullable', 'in:asc,desc'],
             'per_page' => ['sometimes', 'nullable', 'integer', 'min:1', 'max:500'],
             'with_channel' => ['sometimes', 'nullable', 'boolean'],
@@ -50,6 +52,8 @@ class AlipayBillFilterRequest extends FormRequest
             'alipay_trade_no',
             'merchant_order_no',
             'keywords',
+            'project_id',
+            'has_project',
             'order',
             'per_page',
             'with_channel',
@@ -68,6 +72,15 @@ class AlipayBillFilterRequest extends FormRequest
                 unset($inputs['with_channel']);
             } else {
                 $inputs['with_channel'] = $normalized;
+            }
+        }
+
+        if (array_key_exists('has_project', $inputs) && $inputs['has_project'] !== null) {
+            $normalized = filter_var($inputs['has_project'], FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
+            if ($normalized === null) {
+                unset($inputs['has_project']);
+            } else {
+                $inputs['has_project'] = $normalized;
             }
         }
 

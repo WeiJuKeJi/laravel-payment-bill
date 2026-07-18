@@ -17,6 +17,8 @@ Route::middleware(['api'])
                 ->parameters(['payment-channels' => 'payment_channel']);
 
             // 账单下载管理
+            Route::get('bill-download-calendar-stats', [BillDownloadController::class, 'calendarStats'])
+                ->name('bill-download-calendar-stats');
             Route::get('bill-download-calendar', [BillDownloadController::class, 'calendar'])
                 ->name('bill-download-calendar');
             Route::get('bill-downloads/{billDownload}/file', [BillDownloadController::class, 'downloadFile'])
