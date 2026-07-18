@@ -15,7 +15,10 @@ trait ResolvesBillProjects
     {
         if ($this->hasResolvedProjectColumn($query)) {
             if (filled($projectId)) {
-                $query->where($query->getModel()->qualifyColumn('resolved_project_id'), (int) $projectId);
+                $query->whereIn(
+                    $query->getModel()->qualifyColumn('resolved_project_id'),
+                    $this->resolveProjectFilterIds((int) $projectId)
+                );
 
                 return;
             }
@@ -47,6 +50,39 @@ trait ResolvesBillProjects
                 is_bool($hasProject) ? $hasProject : null
             );
         }
+    }
+
+    /**
+     * 获取当前项目及宿主应用定义的项目范围。
+     *
+     * @return list<int>
+     */
+    protected function resolveProjectFilterIds(int $projectId): array
+    {
+        $resolverClass = config('payment-bill.project_resolver');
+
+        if (! is_string($resolverClass) || $resolverClass === '' || ! class_exists($resolverClass)) {
+            return [$projectId];
+        }
+
+        $resolver = app($resolverClass);
+        if (! method_exists($resolver, 'resolveProjectScopeIds')) {
+            return [$projectId];
+        }
+
+        $resolvedIds = $resolver->resolveProjectScopeIds($projectId);
+        if (! is_array($resolvedIds)) {
+            return [$projectId];
+        }
+
+        $projectIds = [$projectId];
+        foreach ($resolvedIds as $resolvedId) {
+            if (is_int($resolvedId) || (is_string($resolvedId) && ctype_digit($resolvedId))) {
+                $projectIds[] = (int) $resolvedId;
+            }
+        }
+
+        return array_values(array_unique($projectIds));
     }
 
     protected function attachResolvedProjects(Collection $bills): void

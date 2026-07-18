@@ -14,7 +14,13 @@
       "Bash(php artisan route:list:*)",
       "Bash(php artisan list:*)",
       "Bash(ls:*)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(python3 -m json.tool:*)",
+      "Bash(php artisan payment-bill:import-local-files:*)",
+      "Bash(./vendor/bin/pint:*)",
+      "Bash(composer dump-autoload:*)",
+      "Bash(PGPASSWORD=* psql:*)",
+      "Bash(mv:*)"
     ]
   }
 }
