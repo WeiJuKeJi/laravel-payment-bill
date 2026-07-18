@@ -2,7 +2,7 @@
 
 All notable changes to `laravel-payment-bill` will be documented in this file.
 
-## [Unreleased]
+## [1.5.1] - 2026-07-19
 
 ### Fixed
 - 项目缓存筛选支持调用宿主解析器的 `resolveProjectScopeIds()`，使用 `resolved_project_id IN (...)` 保留父项目包含后代项目的筛选语义。
