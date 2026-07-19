@@ -453,6 +453,8 @@ class AlipayBillImporter
     {
         // 支付宝业务汇总 CSV 的订单金额会被退款行抵减，账单下载记录展示需要支付总额口径。
         $this->summaryStats['bill_summary_order_amount'] = $this->importTotals['import_total_order_amount'];
+        // 不同版本支付宝账单的服务费原始正负号可能相反，以按业务类型规范后的明细合计为准。
+        $this->summaryStats['bill_summary_fee_amount'] = $this->importTotals['import_total_fee_amount'];
 
         if (
             bccomp($this->summaryStats['bill_summary_refund_amount'], '0.00', 2) === 0
@@ -552,9 +554,10 @@ class AlipayBillImporter
             $value = $index !== null ? ($row[$index] ?? null) : null;
 
             if ($attribute === 'service_fee_amount') {
-                // 支付宝原始服务费：支付为负、退款为正，与微信手续费符号正好相反。
-                // 取反统一为「支付为正、退款为负」，与微信账单 fee_amount 保持一致。
-                $data[$attribute] = $this->negateAmount($this->formatAmount($value));
+                $data[$attribute] = $this->normalizeServiceFee(
+                    (string) ($data['biz_type'] ?? ''),
+                    $value
+                );
                 continue;
             }
 
@@ -587,6 +590,24 @@ class AlipayBillImporter
         }
 
         return $data;
+    }
+
+    /**
+     * 支付宝账单文件存在两种服务费符号约定，统一按业务类型解释：支付为正、退款为负。
+     */
+    private function normalizeServiceFee(string $bizType, ?string $amount): string
+    {
+        $value = (float) $this->formatAmount($amount);
+
+        if (str_contains($bizType, '退款')) {
+            return number_format(-abs($value), 2, '.', '');
+        }
+
+        if (str_contains($bizType, '交易')) {
+            return number_format(abs($value), 2, '.', '');
+        }
+
+        return number_format($value, 2, '.', '');
     }
 
     private function formatAmount(?string $value): string

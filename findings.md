@@ -14,6 +14,12 @@
 - laravel-payment-bill: require only Laravel 10/11/12; dev testbench only ^8.0|^9.0/phpunit ^10.0.
 - laravel-schedule-monitor-api: require only Laravel 12; dev testbench only ^10.0.
 
+## Alipay fee sign compatibility
+- The unconditional sign inversion was introduced by commit `1c61e60` based on a single assumed Alipay CSV convention.
+- Production contains two source conventions. A general importer must use `biz_type`, not the incoming sign, as the business meaning.
+- Canonical package convention matches WeChat: payment fee positive, refund fee negative.
+- `bill_summary_fee_amount` should be derived from normalized detail totals after import, because summary CSV sign conventions can also vary.
+
 ## Validation
 - Laravel 13 Illuminate packages resolve to v13.7.0 on the current PHP 8.4 runtime.
 - Testbench 11.x resolves with Laravel 13.
