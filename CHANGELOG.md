@@ -2,6 +2,11 @@
 
 All notable changes to `laravel-payment-bill` will be documented in this file.
 
+## [1.5.3] - 2026-07-23
+
+### Fixed
+- 微信账单 CSV 读写不再把反斜杠当作字段转义符，避免商品名称或商户数据包以反斜杠结尾时吞掉结束引号、造成后续金额列错位和数据库数值溢出。
+
 ## [1.5.2] - 2026-07-19
 
 ### Fixed

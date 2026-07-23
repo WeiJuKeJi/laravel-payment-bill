@@ -106,8 +106,7 @@ class WechatBillImporter
     {
         $path = $this->resolveAbsolutePath();
 
-        $file = new SplFileObject($path, 'rb');
-        $file->setFlags(SplFileObject::READ_CSV | SplFileObject::SKIP_EMPTY | SplFileObject::DROP_NEW_LINE);
+        $file = $this->openCsvFile($path);
 
         $headers = null;
         $headerMap = [];
@@ -574,6 +573,21 @@ class WechatBillImporter
         }
 
         return $row;
+    }
+
+    /**
+     * 打开微信 CSV，并将反斜杠按普通业务文本处理。
+     *
+     * 微信商品名称和商户数据包可能以反斜杠结尾。PHP 默认 CSV 转义符也是反斜杠，
+     * 会误吞字段结束引号并导致后续金额列错位，因此必须禁用非标准反斜杠转义。
+     */
+    private function openCsvFile(string $path): SplFileObject
+    {
+        $file = new SplFileObject($path, 'rb');
+        $file->setFlags(SplFileObject::READ_CSV | SplFileObject::SKIP_EMPTY | SplFileObject::DROP_NEW_LINE);
+        $file->setCsvControl(',', '"', '');
+
+        return $file;
     }
 
     /**

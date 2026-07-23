@@ -4,10 +4,51 @@ namespace WeiJuKeJi\PaymentBill\Tests\Unit\Services\Importers;
 
 use PHPUnit\Framework\TestCase;
 use ReflectionMethod;
+use SplFileObject;
 use WeiJuKeJi\PaymentBill\Services\Importers\WechatBillImporter;
 
 class WechatBillImporterTest extends TestCase
 {
+    public function test_csv_reader_preserves_amount_columns_when_goods_name_ends_with_backslash(): void
+    {
+        $path = tempnam(sys_get_temp_dir(), 'wechat_bill_daily_');
+        self::assertNotFalse($path);
+
+        $headers = [
+            '交易时间', '公众账号ID', '商户号', '特约商户号', '设备号', '微信订单号', '商户订单号',
+            '用户标识', '交易类型', '交易状态', '付款银行', '货币种类', '应结订单金额', '代金券金额',
+            '微信退款单号', '商户退款单号', '退款金额', '充值券退款金额', '退款类型', '退款状态',
+            '商品名称', '商户数据包', '手续费', '费率', '订单金额', '申请退款金额', '费率备注',
+        ];
+        $row = [
+            '2024-05-08 19:35:12', 'wx-app-id', '1609502409', '1610072814', null,
+            '4200059276202405087900654345', 'DR_2024050880901220', 'openid', 'MICROPAY', 'SUCCESS',
+            'CCB_DEBIT', 'CNY', '54.00', '0.00', '0', '0', '0.00', '0.00', null, null,
+            '如梦集市收银<上上签.烧烤>菜类[10份]\\', null, '0.32000', '0.60%', '54.00', '0.00', null,
+        ];
+
+        $writer = new SplFileObject($path, 'wb');
+        $writer->fputcsv($headers, ',', '"', '');
+        $writer->fputcsv($row, ',', '"', '');
+        unset($writer);
+
+        try {
+            $importer = new WechatBillImporter(1, 'local', 'unused.csv');
+            $method = new ReflectionMethod($importer, 'openCsvFile');
+            /** @var SplFileObject $reader */
+            $reader = $method->invoke($importer, $path);
+            $reader->fgetcsv();
+            $parsedRow = $reader->fgetcsv();
+
+            self::assertCount(count($headers), $parsedRow);
+            self::assertSame('4200059276202405087900654345', $parsedRow[5]);
+            self::assertSame('如梦集市收银<上上签.烧烤>菜类[10份]\\', $parsedRow[20]);
+            self::assertSame('0.00', $parsedRow[25]);
+        } finally {
+            @unlink($path);
+        }
+    }
+
     public function test_refunds_for_same_payment_and_second_use_different_identities(): void
     {
         $importer = new WechatBillImporter(1, 'local', 'unused.csv');

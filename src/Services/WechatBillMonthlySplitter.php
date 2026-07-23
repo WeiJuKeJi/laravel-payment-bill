@@ -24,6 +24,7 @@ class WechatBillMonthlySplitter
 
         $file = new SplFileObject($sourcePath, 'rb');
         $file->setFlags(SplFileObject::READ_CSV | SplFileObject::SKIP_EMPTY | SplFileObject::DROP_NEW_LINE);
+        $file->setCsvControl(',', '"', '');
 
         $header = null;
         $tradeTimeIndex = null;
@@ -62,10 +63,10 @@ class WechatBillMonthlySplitter
                 if (! isset($writers[$dateKey])) {
                     $dailyFiles[$dateKey] = $this->makeDailyFile($dateKey, $sourceFilename);
                     $writers[$dateKey] = new SplFileObject($dailyFiles[$dateKey]['path'], 'wb');
-                    $writers[$dateKey]->fputcsv($header);
+                    $writers[$dateKey]->fputcsv($header, ',', '"', '');
                 }
 
-                $writers[$dateKey]->fputcsv($row);
+                $writers[$dateKey]->fputcsv($row, ',', '"', '');
             }
         } finally {
             $writers = [];
